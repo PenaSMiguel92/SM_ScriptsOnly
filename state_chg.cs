@@ -28,12 +28,6 @@ public class state_chg : MonoBehaviour
     private AudioClip soundUse;
     private Tilemap mainTileMap;
     private Vector3Int TileLoc;
-    //private string nameofobject;
-    
-    //private 
-
-    //private 
-    // Start is called before the first frame update
     void Start()
     {
         state = false;
@@ -43,7 +37,6 @@ public class state_chg : MonoBehaviour
         TileLoc = mainTileMap.LocalToCell(gameObject.GetComponent<Transform>().localPosition);
     }
 
-    // Update is called once per frame
     void Update()
     {
         if (!state && type < 2 && gameObject != null)
@@ -57,7 +50,7 @@ public class state_chg : MonoBehaviour
             GameObject[] coins = GameObject.FindGameObjectsWithTag("pickup");
             foreach (GameObject coin in coins)
             {
-                if (coin.GetComponent<pickup_type>().typeofPickup < 3)
+                if ((int) coin.GetComponent<pickup_type>().TypeOfPickup < 3)
                 {
                     coin_sum += 1;
                 }
@@ -89,11 +82,8 @@ public class state_chg : MonoBehaviour
         endAnim = false;
         int curFrame = 0;
         int timer1 = 0;
-        //updateSprite(obj, obj.GetComponent<state_chg>().sprites[curFrame], new Vector3());
         while (!endAnim)
         {
-            //print(timer1);
-            //print(curFrame);
             timer1 += 1;
             if (timer1 > 20)
             {
@@ -104,24 +94,17 @@ public class state_chg : MonoBehaviour
                 curFrame = curFrame > Mathf.RoundToInt(frames.y)+1 ? Mathf.RoundToInt(frames.x) : curFrame;
                 if (curFrame >= Mathf.RoundToInt(frames.y))
                 {
-
                     curFrame = Mathf.RoundToInt(frames.x);
-
-                    //Vector3Int objGridPos = foreground.GetComponent<Tilemap>().LocalToCell(obj.GetComponent<Transform>().localPosition);
-                    //foreground.GetComponent<Tilemap>().SetTile(objGridPos, null);
                     if (!loop)
                     {
                         endAnim = true;
                     }
-                    //endAnim = true;
                 }
 
             }
             updateSprite(obj, sprites[curFrame], new Vector3(0, 0, 0)); //static class, so no rotation necessary.
             yield return new WaitForEndOfFrame();
         }
-        
-        //Destroy(gameObject); //destroy once animation ends.
     }
     public TileandObject getTileandObjectBack()
     {
@@ -133,22 +116,4 @@ public class state_chg : MonoBehaviour
         pushableTileLoc = _tileandobject.pushableTileLoc;
         pushableObject = _tileandobject.pushableObject;
     }
-
-    //    if (state)
-    //    {
-    //        gameObject.GetComponent<SpriteRenderer>().sprite = sprites[sprites.Length - 1];
-    //    }
-    //    else
-    //    {
-    //        gameObject.GetComponent<SpriteRenderer>().sprite = sprites[0];
-    //    }
-    //    //else if (!state)
-    //    //{
-    //    //    if (crossing)
-    //    //            int crossingTst = crossing ? 1 : 0;
-    //    //            gameObject.GetComponent<SpriteRenderer>().sprite = sprites[crossingTst];
-    //    //            return;
-    //    //    }
-    //    //}
-    //}
 }

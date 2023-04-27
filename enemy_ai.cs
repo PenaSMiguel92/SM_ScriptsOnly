@@ -7,7 +7,6 @@ public class enemy_ai : MonoBehaviour
 {
     public int enemy_type;
     private int[] chancesBehaviour;
-    //public GameObject foreground;
     public Sprite[] enemy_sprites;
     public Sprite[] enemy_deathsprites;
 
@@ -25,25 +24,13 @@ public class enemy_ai : MonoBehaviour
     private int ai_frame;
     private GameObject spot_obj;
     private IEnumerator walkAnimation;
-    //private GameObject player;
-
-    // Start is called before the first frame update
     void Start()
     {
         main_system = GameObject.FindGameObjectWithTag("GameController");
         foreground = main_system.GetComponent<GameControl>().foreground;
-        //plr_sprites = Resources.LoadAll<Sprite>("Assets/Sprites/GameImages/Stickman");
-        //print(plr_sprites.Length);
-
-        //foreground.GetComponent<TilemapRenderer>().forceRenderingOff = true;
-        //gameObject = GameObject.FindGameObjectWithTag("Player");
         ai_position = gameObject.GetComponent<Transform>().localPosition;
         ai_gridpos = main_system.GetComponent<GameControl>().foreground.GetComponent<Tilemap>().LocalToCell(ai_position);
         ai_state = 1;
-        //plr_score = 0;
-        //Object.Destroy(foreground.GetComponent<Tilemap>().GetTile<Tile>(ai_gridpos));
-        //print(ai_gridpos);
-        //AudioSource. audioClips[0] //(audioClips[0], new Vector3(0.5f, 0.05f, -10));
         switch(enemy_type)
         {
             case 1: //guard
@@ -58,11 +45,8 @@ public class enemy_ai : MonoBehaviour
         }
     }
 
-    // Update is called once per frame
     void Update()
     {
-        //Vector3Int dir = new Vector3Int(Mathf.RoundToInt(Mathf.Cos(ai_facing)), -Mathf.RoundToInt(Mathf.Sin(ai_facing)), 0);
-        //print(dir);
         if (!enemy_death)
         {
             enemyAIMakeDecision();
@@ -208,11 +192,8 @@ public class enemy_ai : MonoBehaviour
         bool endAnim = false;
         int curFrame = ai_frame;
         int timer1 = 0;
-        //updateSprite(obj, obj.GetComponent<state_chg>().sprites[curFrame], new Vector3());
         while (!endAnim)
         {
-            //print(timer1);
-            //print(curFrame);
             timer1 += 1;
             if (timer1 > 20)
             {
@@ -223,16 +204,11 @@ public class enemy_ai : MonoBehaviour
                 ai_frame = curFrame>Mathf.RoundToInt(frames.y)?Mathf.RoundToInt(frames.x):curFrame;
                 if (curFrame > Mathf.RoundToInt(frames.y))
                 {
-
                     curFrame = Mathf.RoundToInt(frames.x);
-
-                    //Vector3Int objGridPos = foreground.GetComponent<Tilemap>().LocalToCell(obj.GetComponent<Transform>().localPosition);
-                    //foreground.GetComponent<Tilemap>().SetTile(objGridPos, null);
                     if (!loop)
                     {
                         endAnim = true;
                     }
-                    //endAnim = true;
                 }
 
             }
@@ -275,8 +251,6 @@ public class enemy_ai : MonoBehaviour
                 {
                     rndRadDirectionList.RemoveAt(indexChosen);
                 }
-
-                
             }
             else
             {

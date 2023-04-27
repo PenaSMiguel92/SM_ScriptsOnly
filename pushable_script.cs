@@ -30,20 +30,13 @@ public class pushable_script : MonoBehaviour
         gridPos = grid.GetComponent<Tilemap>().LocalToCell(position_track) + dir;
         set = false;
         GameControl.current.onPushObject += PushableObject;
-        //ruleTile = grid.GetComponent<Tilemap>().GetTile<TileBase>(gridPos-dir);
     }
     private void PushableObject(GameObject obj)
     {
         if (obj.GetComponent<pushable_script>().idUse == idUse && move)
         {
-            //print("Moving");
             StartCoroutine(MoveAsDirected());
         }
-        //else
-        //{
-        //    print(obj.name);
-        //    return;
-        //}
     }
 
     IEnumerator MoveAsDirected()

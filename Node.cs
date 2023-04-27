@@ -2,17 +2,35 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class Node
-{
-    private bool crossable;
-    private Vector3 location;
+public interface INode {
+    public bool Crossable { get; }
+    public Vector3 Location { get; set; }
+    public Node Parent { get; set; }
 
-    private Node parent;
+}
+
+public class Node : INode
+{
+    private bool _crossable;
+    private Vector3 _location;
+    private Node _parent;
+    public bool Crossable {
+        get { return _crossable; }
+    }
+    public Vector3 Location {
+        get { return _location; }
+        set { _location = value; }
+    }
+    public Node Parent {
+        get { return _parent; }
+        set { _parent = value; }
+    }
     
-    public Node(bool _crossable, Vector3 _location)
+    
+    public Node(bool crossable, Vector3 location)
     {
-        crossable = _crossable;
-        location = _location;
+        _crossable = crossable;
+        _location = location;
     }
 
 }

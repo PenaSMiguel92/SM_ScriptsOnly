@@ -141,16 +141,16 @@ public class GameControl : MonoBehaviour
     //}
     public void PickupItem(GameObject item)
     {
-        switch (item.GetComponent<pickup_type>().typeofPickup)
+        switch (item.GetComponent<pickup_type>().TypeOfPickup)
         {
-            case 1:
+            case PickUpEnum.Coin:
                 //print("coin");
                 AudioSource.PlayClipAtPoint(audioClips[0], item.GetComponent<Transform>().localPosition);
                 plr_score += 100;
                 foreground.GetComponent<Tilemap>().SetTile(plr_gridpos, null);
 
                 return;
-            case 2:
+            case PickUpEnum.CoinChest:
                 //print("coin_chest");
                 AudioSource.PlayClipAtPoint(audioClips[1], item.GetComponent<Transform>().localPosition);
                 plr_score += 500;
@@ -172,8 +172,8 @@ public class GameControl : MonoBehaviour
         
         if (!plr_death)
         {
-            Vector2 plr_control = new Vector2(Input.GetAxis("Horizontal"), Input.GetAxis("Vertical"));
-            if (!plr_moving && Input.anyKey && plr_control.magnitude > 0)
+            Vector2 plr_control = Input.main.PlayerDir; //new Vector2(Input.GetAxis("Horizontal"), Input.GetAxis("Vertical"));
+            if (!plr_moving && plr_control.magnitude > 0)
             {
 
                 plr_direction = new Vector2(plr_control.x, plr_control.y);
@@ -453,7 +453,7 @@ public class GameControl : MonoBehaviour
                     }
                 }
             }
-            else if (!plr_moving && !Input.anyKey)
+            else if (!plr_moving)
             {
 
                 switch (plr_state)
@@ -524,7 +524,7 @@ public class GameControl : MonoBehaviour
     }
     void addToInventory(GameObject obj)
     {
-        int typeOfPickup = obj.GetComponent<pickup_type>().typeofPickup;
+        int typeOfPickup = (int) obj.GetComponent<pickup_type>().TypeOfPickup;
         inventory.Add(typeOfPickup);//.SetValue(typeOfPickup, inventory.Length);
         return;
     }
