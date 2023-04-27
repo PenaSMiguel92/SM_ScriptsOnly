@@ -97,7 +97,7 @@ public class GameControl : MonoBehaviour
         int tracker = 1;
         foreach (GameObject push_obj in pushableObjects)
         {
-            push_obj.GetComponent<pushable_script>().idUse = tracker;
+            push_obj.GetComponent<pushable_script>().IdUse = tracker;
             tracker += 1;
         }
         //UnityEngine.SceneManagement.SceneManager.activeSceneChanged += ChangedActiveScene;
@@ -216,15 +216,13 @@ public class GameControl : MonoBehaviour
                                 //print(plr_dir.magnitude);
                                 if (plr_dir.magnitude == 1)
                                 {
-                                    if (!spot_obj.GetComponent<pushable_script>().crossing) //move to spot_obj's location if it is currently crossing and saved to a different tile.
+                                    if (!spot_obj.GetComponent<pushable_script>().Crossing) //move to spot_obj's location if it is currently crossing and saved to a different tile.
                                     {
                                         if (nextTileObj != null)
                                         {
                                             if (nextTileObj.tag == "obstacle" && nextTileObj.GetComponent<state_chg>().type < 2)
                                             {
-                                                spot_obj.GetComponent<pushable_script>().move = true;
-                                                spot_obj.GetComponent<pushable_script>().dir = plr_dir;
-                                                spot_obj.GetComponent<pushable_script>().tileLoc = obj_gridpos;
+                                                spot_obj.GetComponent<pushable_script>().SetProperties(plr_dir, true, obj_gridpos);
                                                 invokePushObject(spot_obj);
                                                 plr_moving = true;
                                                 plr_gridpos += plr_dir;
@@ -232,9 +230,7 @@ public class GameControl : MonoBehaviour
                                         }
                                         else
                                         {
-                                            spot_obj.GetComponent<pushable_script>().move = true;
-                                            spot_obj.GetComponent<pushable_script>().dir = plr_dir;
-                                            spot_obj.GetComponent<pushable_script>().tileLoc = obj_gridpos;
+                                            spot_obj.GetComponent<pushable_script>().SetProperties(plr_dir, true, obj_gridpos);
                                             invokePushObject(spot_obj);
                                             plr_moving = true;
                                             plr_gridpos += plr_dir;
@@ -301,9 +297,7 @@ public class GameControl : MonoBehaviour
                                                 }
                                                 //print(nextTileObj);
                                                 TileandObject tileAndObject = spot_obj.GetComponent<state_chg>().getTileandObjectBack();
-                                                tileAndObject.pushableObject.GetComponent<pushable_script>().dir = plr_dir;
-                                                tileAndObject.pushableObject.GetComponent<pushable_script>().move = true;
-                                                tileAndObject.pushableObject.GetComponent<pushable_script>().tileLoc = tileAndObject.pushableTileLoc;
+                                                tileAndObject.pushableObject.GetComponent<pushable_script>().SetProperties(plr_dir, true, tileAndObject.pushableTileLoc);
                                                 invokePushObject(tileAndObject.pushableObject);
                                                 plr_moving = true;
                                                 plr_gridpos += plr_dir;
