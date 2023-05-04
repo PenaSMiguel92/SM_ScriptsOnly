@@ -1,67 +1,108 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Tilemaps;
 
-public class enemy_ai : MonoBehaviour
-{
-    public int enemy_type;
-    private int[] chancesBehaviour;
-    public Sprite[] enemy_sprites;
-    public Sprite[] enemy_deathsprites;
+public enum EnemyType { Guard, Gatherer, Ninja, Mutant, Clone }
+public enum EnemyState { Loading, Idle, Walk, Attack, Follow, Death }
 
-    private bool enemy_death;
-    private GameObject main_system;
-    private GameObject foreground;
-    private Vector3 ai_position;
-    private Vector3Int ai_gridpos;
-    private int ai_state;
-    private bool ai_moving;
-    private Vector2 ai_direction;
-    private int ai_facing;
-    private Vector3Int ai_dir;
-    private int ai_timer1;
-    private int ai_frame;
-    private GameObject spot_obj;
-    private IEnumerator walkAnimation;
+public interface IEnemyAI
+{
+    public Vector3 LocalPosition { get; }
+    public EnemyState State { get; }
+    public void Kill(DeathType _deathType);
+}
+public class enemy_ai : MonoBehaviour, IEnemyAI
+{
+    [SerializeField] private EnemyType _enemyType;
+    [SerializeField] private Sprite[] _enemyWalkSprites;
+    [SerializeField] private Sprite[] _enemyStandardDeathSprites;
+    [SerializeField] private Sprite[] _enemyElectricutionDeathSprites;
+    [SerializeField] private Sprite[] _enemyBurnDeathSprites;
+    private Sprite[] _enemyCurrentSprites;
+    private int[] _enemyChancesBehaviour;
+    private Transform _enemyTransform;
+    private GameControl _mainControl;
+    private Player _mainPlayer;
+    private AudioManager _audioManager;
+    private Vector3 _enemyPosition;
+    public Vector3 LocalPosition {get { return _enemyTransform.localPosition; } }
+    private Vector3Int _enemyGridPosition;
+    private Vector2 _enemyInputDirection;
+    private int _enemyFacingDirection;
+    private Vector3Int _enemyMoveDirection;
+    private bool _enemyMoving;
+    private int _enemyTimer1;
+    private int _enemyLastFrame;
+    private IEnumerator _enemyAnimation;
+    private Coroutine _enemyAnimationPlayback;
+    private EnemyState _enemyState = EnemyState.Loading;
+    public EnemyState State {get { return _enemyState; } }
+
+    public event EventHandler OnEnemyAnimationEnd;
+
+
+
     void Start()
     {
-        main_system = GameObject.FindGameObjectWithTag("GameController");
-        foreground = main_system.GetComponent<GameControl>().foreground;
-        ai_position = gameObject.GetComponent<Transform>().localPosition;
-        ai_gridpos = main_system.GetComponent<GameControl>().foreground.GetComponent<Tilemap>().LocalToCell(ai_position);
-        ai_state = 1;
-        switch(enemy_type)
+        _mainControl = GameControl.Main;
+        _mainControl.onGameStart += OnGameStart;
+        _enemyTransform = gameObject.GetComponent<Transform>();
+        _mainPlayer = Player.Main;
+
+    }
+
+    void OnGameStart(object _sender, EventArgs _e)
+    {
+        _enemyPosition = _enemyTransform.localPosition;
+        _enemyGridPosition = _mainControl.GetGridPosition(_enemyPosition);
+        _enemyCurrentSprites = _enemyWalkSprites;
+        switch (_enemyType)
         {
-            case 1: //guard
-                chancesBehaviour = new int[] {0,10,11,100,0,0,0,0,0,0}; //lower and upper bounds for select rnd direction and walk(min,max), keep walking(min,max), attack at current location (min, max), follow player (min,max),  
-                return;
-            case 2: //gatherer
-                chancesBehaviour = new int[] { 0, 8,9,40, 41, 95, 96, 100 }; //lower and upper bounds for select rnd direction and walk(min,max), keep walking(min,max), attack at current location (min, max), follow player (min,max),  
-                return;
-            case 3: //ninja
-                chancesBehaviour = new int[] { 0, 6,7,35, 36, 65, 66, 100}; //lower and upper bounds for select rnd direction and walk(min,max), keep walking(min,max), attack at current location (min, max), follow player (min,max),  
-                return;
+            case EnemyType.Guard: //guard
+                _enemyChancesBehaviour = new int[] { 0, 10, 11, 100, 0, 0, 0, 0, 0, 0 }; //lower and upper bounds for select rnd direction and walk(min,max), keep walking(min,max), attack at current location (min, max), follow player (min,max),  
+                break;
+            case EnemyType.Gatherer: //gatherer
+                _enemyChancesBehaviour = new int[] { 0, 8, 9, 40, 41, 95, 96, 100 }; //lower and upper bounds for select rnd direction and walk(min,max), keep walking(min,max), attack at current location (min, max), follow player (min,max),  
+                break;
+            case EnemyType.Ninja: //ninja
+                _enemyChancesBehaviour = new int[] { 0, 6, 7, 35, 36, 65, 66, 100 }; //lower and upper bounds for select rnd direction and walk(min,max), keep walking(min,max), attack at current location (min, max), follow player (min,max),  
+                break;
         }
+        _enemyState = EnemyState.Idle;
     }
 
     void Update()
     {
-        if (!enemy_death)
+        if (_enemyState == EnemyState.Loading) return;
+        if (_enemyState == EnemyState.Death) return;
+        if (_mainPlayer.State == PlayerState.Death) return;
+        EnemyAIMakeDecision();
+        if ((_mainPlayer.LocalPosition - _enemyTransform.localPosition).magnitude < 0.707)
         {
-            enemyAIMakeDecision();
-            GameObject player = GameObject.FindGameObjectWithTag("Player");
-            
-            if ((!main_system.GetComponent<GameControl>().plr_death)&&((player.GetComponent<Transform>().localPosition - gameObject.GetComponent<Transform>().localPosition).magnitude < 0.707))
-            {
-                main_system.GetComponent<GameControl>().death_use = main_system.GetComponent<GameControl>().death_types[0];
-                main_system.GetComponent<GameControl>().plr_death = true;
-                AudioSource.PlayClipAtPoint(main_system.GetComponent<GameControl>().audioClips[3], player.GetComponent<Transform>().localPosition);
-                main_system.GetComponent<GameControl>().plr_timerRT = Time.realtimeSinceStartup;
-            }
+            _mainPlayer.Kill(DeathType.Standard);
         }
     }
-
+    public void Kill(DeathType _deathtype)
+    {
+        if (_deathtype == DeathType.Acid) return;
+        _enemyState = EnemyState.Death;
+        switch(_deathtype)
+        {
+            case DeathType.Standard:
+                _enemyCurrentSprites = _enemyStandardDeathSprites;
+                break;
+            case DeathType.Electricution:
+                _enemyCurrentSprites = _enemyElectricutionDeathSprites;
+                break;
+            case DeathType.Burn:
+                _enemyCurrentSprites = _enemyBurnDeathSprites;
+                break;
+        }
+        _enemyAnimation = (_enemyAnimation == null) ? PlayAnimation(false) : _enemyAnimation;
+        StartCoroutine(_enemyAnimation);
+    }
     int Direction2Deg(float y, float x)
     {
         float degrees = Mathf.Rad2Deg * Mathf.Atan2(y, x);
@@ -70,154 +111,163 @@ public class enemy_ai : MonoBehaviour
         return result;
     }
 
-    Vector3 updatePosition(GameObject obj, Vector3 dir)
+    Vector3 UpdatePosition( Vector3 _position)
     {
-        Transform obj_transform = obj.GetComponent<Transform>();
-        obj_transform.localPosition = dir;
-        return obj_transform.localPosition;
+        _enemyTransform.localPosition = _position;
+        return _enemyTransform.localPosition;
     }
-    void updateSprite(GameObject obj, Sprite sprite, Vector3 rotation)
+    void UpdateSprite(Sprite sprite, Vector3 rotation)
     {
-        obj.GetComponent<Transform>().localEulerAngles = rotation;
-        SpriteRenderer sp_rend = obj.GetComponent<SpriteRenderer>();
+        _enemyTransform.localEulerAngles = rotation;
+        SpriteRenderer sp_rend = gameObject.GetComponent<SpriteRenderer>();
         sp_rend.sprite = sprite;
-        return;
     }
 
-    void enemyAIMakeDecision()
+    void EnemyAIMakeDecision()
     {
-        switch (ai_state)
+        switch (_enemyState)
         {
-            case 1: //standing, make choice of motion type
-                int rndChoice = Mathf.RoundToInt(Random.value*100);
-                if (rndChoice > chancesBehaviour[0] && rndChoice <= chancesBehaviour[1]) //80% chance of choosing random direction.
+            case EnemyState.Idle: //standing, make choice of motion type
+                int rndChoice = Mathf.RoundToInt(UnityEngine.Random.value * 100);
+                if (rndChoice > _enemyChancesBehaviour[0] && rndChoice <= _enemyChancesBehaviour[1]) //80% chance of choosing random direction.
                 {
-                    selectRandomDirection();
-                    ai_state = 2; //walk along selected direction
+                    SelectRandomDirection();
+                    _enemyCurrentSprites = _enemyWalkSprites;
+                    _enemyState = EnemyState.Walk; //walk along selected direction
                 }
-                else if (rndChoice > chancesBehaviour[2] && rndChoice <= chancesBehaviour[3]) //20% chance of striking at current location if enemy_type other than guard and select a random direction afterwards. Chances change according to enemy type!
+                else if (rndChoice > _enemyChancesBehaviour[2] && rndChoice <= _enemyChancesBehaviour[3]) //20% chance of striking at current location if enemy_type other than guard and select a random direction afterwards. Chances change according to enemy type!
                 {
-
-                    ai_state = 2; //keep walking
+                    _enemyCurrentSprites = _enemyWalkSprites;
+                    _enemyState = EnemyState.Walk; //keep walking
                 }
-                else if (rndChoice > chancesBehaviour[4] && rndChoice <= chancesBehaviour[5])
+                else if (rndChoice > _enemyChancesBehaviour[4] && rndChoice <= _enemyChancesBehaviour[5])
                 {
                     //strike at current location w/ function and then commence walking.
                     //selectRandomDirection();
                     //ai_state = 2;
-                    
+
                 }
-                else if (rndChoice > chancesBehaviour[6] && rndChoice <= chancesBehaviour[7])
+                else if (rndChoice > _enemyChancesBehaviour[6] && rndChoice <= _enemyChancesBehaviour[7])
                 {
                     //follow player
                 }
                 //anything other than guard can occasionally follow player!
                 return;
-            case 2: //walking
+            case EnemyState.Walk: //walking
                 //print("walking");
-                if (!ai_moving)
+                if (!_enemyMoving)
                 {
-                    ai_moving = true;
-                    ai_gridpos += ai_dir;
+                    _enemyMoving = true;
+                    _enemyGridPosition += _enemyMoveDirection;
                     //print("Coroutine started");
-                    walkAnimation = playAnimation(gameObject, new Vector2(0, 11), enemy_sprites, true);
+                    _enemyAnimation = (_enemyAnimation == null) ? PlayAnimation(true) : _enemyAnimation;
                     //walkAnimation = StartCoroutine();
-                    StartCoroutine(walkAnimation);
+                    StartCoroutine(_enemyAnimation);
+                    //_enemyAnimationPlayback = (_enemyAnimationPlayback == null) ? StartCoroutine(_enemyAnimation) : _enemyAnimationPlayback;
                 }
                 else
                 {
-                    if ((ai_position - (ai_gridpos + new Vector3(0.5f, 0.5f, 0))).magnitude <= 0.05)
+                    if ((_enemyPosition - (_enemyGridPosition + new Vector3(0.5f, 0.5f, 0))).magnitude <= 0.05)
                     {
-                        ai_position = updatePosition(gameObject, ai_gridpos + new Vector3(0.5f, 0.5f, 0));
+                        _enemyPosition = UpdatePosition(_enemyGridPosition + new Vector3(0.5f, 0.5f, 0));
                         //plr_timer1 = 0;
-                        ai_moving = false;
-                        StopCoroutine(walkAnimation);
-                        ai_state = 1;
+                        _enemyMoving = false;
+                        if (_enemyAnimation != null)
+                        {
+                             StopCoroutine(_enemyAnimation);
+                        }
+                       
+                        _enemyState = EnemyState.Idle;
                     }
                     else
                     {
-                        spot_obj = foreground.GetComponent<Tilemap>().GetInstantiatedObject(ai_gridpos);
+                        GameObject spot_obj = _mainControl.GetInstantiatedObject(_enemyGridPosition);
 
                         if (spot_obj != null)
                         {
                             if (spot_obj.tag == "obstacle")
                             {
-                                if (spot_obj.GetComponent<state_chg>().crossable){
-                                    ai_position = updatePosition(gameObject, ai_position + (Time.deltaTime * new Vector3(ai_dir.x, ai_dir.y, 0) * 2f));
+                                if (spot_obj.GetComponent<state_chg>().Crossable)
+                                {
+                                    _enemyPosition = UpdatePosition(_enemyPosition + (Time.deltaTime * new Vector3(_enemyInputDirection.x, _enemyInputDirection.y, 0) * 2f));
                                     return;
                                 }
                             }
                             else if (spot_obj.tag == "pickup" || spot_obj.tag == "enemy" || spot_obj.tag == "Player")
                             {
-                                ai_position = updatePosition(gameObject, ai_position + (Time.deltaTime * new Vector3(ai_dir.x, ai_dir.y, 0) * 2f));
+                                _enemyPosition = UpdatePosition( _enemyPosition + (Time.deltaTime * new Vector3(_enemyInputDirection.x, _enemyInputDirection.y, 0) * 2f));
                                 return;
                             }
 
-                            ai_gridpos -= ai_dir;
-                            ai_position = updatePosition(gameObject, ai_gridpos + new Vector3(0.5f, 0.5f, 0));
-                            ai_moving = false;
-                            ai_state = 1;
-                            StopCoroutine(walkAnimation);
+                            _enemyGridPosition -= _enemyMoveDirection;
+                            _enemyPosition = UpdatePosition( _enemyGridPosition + new Vector3(0.5f, 0.5f, 0));
+                            _enemyMoving = false;
+                            _enemyState = EnemyState.Idle;
+                            //StopCoroutine(_enemyAnimation);
 
-                            
-                            
+
+
                         }
                         else
                         {
-                            ai_position = updatePosition(gameObject, ai_position + (Time.deltaTime * new Vector3(ai_dir.x, ai_dir.y, 0) * 2f));
+                            _enemyPosition = UpdatePosition( _enemyPosition + (Time.deltaTime * new Vector3(_enemyInputDirection.x, _enemyInputDirection.y, 0) * 2f));
                         }
-                        
+
                     }
 
 
 
-                    
+
                 }
                 return;
-            case 3: //striking
+            case EnemyState.Attack: //striking
                 return;
-            case 4: //following
+            case EnemyState.Follow: //following
+                return;
+            case EnemyState.Death:
                 return;
         }
-                
+
     }
 
-    IEnumerator pathFindTowardsPoint(GameObject obj, Vector3Int target)
+    IEnumerator PathFindTowardsPoint(GameObject obj, Vector3Int target)
     {
         yield return new WaitForEndOfFrame();
     }
 
-    IEnumerator playAnimation(GameObject obj, Vector2 frames, Sprite[] sprites, bool loop) //frames is vect2d with x being start and y being end frames
+    IEnumerator PlayAnimation(bool _loop) //frames is vect2d with x being start and y being end frames
     {
-        bool endAnim = false;
-        int curFrame = ai_frame;
+        bool end_anim = false;
+        const int FRAME_RATE = 20;
+        int cur_frame = (_enemyLastFrame > _enemyCurrentSprites.Length - 1) ? 0 : _enemyLastFrame;
         int timer1 = 0;
-        while (!endAnim)
+        while (!end_anim)
         {
             timer1 += 1;
-            if (timer1 > 20)
+            if (timer1 > FRAME_RATE)
             {
                 timer1 = 0;
 
 
-                curFrame += 1;
-                ai_frame = curFrame>Mathf.RoundToInt(frames.y)?Mathf.RoundToInt(frames.x):curFrame;
-                if (curFrame > Mathf.RoundToInt(frames.y))
+                cur_frame += 1;
+                if (cur_frame > _enemyCurrentSprites.Length - 1)
                 {
-                    curFrame = Mathf.RoundToInt(frames.x);
-                    if (!loop)
+                    cur_frame = 0;
+                    if (!_loop)
                     {
-                        endAnim = true;
+                        end_anim = true;
                     }
                 }
 
             }
-            updateSprite(obj, sprites[curFrame], new Vector3(0,0,ai_facing + 90));
+            _enemyLastFrame = cur_frame;
+            UpdateSprite( _enemyCurrentSprites[cur_frame], new Vector3(0, 0, _enemyFacingDirection + 90));
             yield return new WaitForEndOfFrame();
         }
+        OnEnemyAnimationEnd?.Invoke(this, EventArgs.Empty);
     }
 
-    void selectRandomDirection()
+    void SelectRandomDirection()
     {
         List<float> rndRadDirectionList = new List<float> { 0, 0.5f * Mathf.PI, Mathf.PI, 1.5f * Mathf.PI, 2f * Mathf.PI };
         float rndRadDirection;
@@ -225,17 +275,18 @@ public class enemy_ai : MonoBehaviour
         bool dirObtained = false;
         while (!dirObtained)
         {
-            indexChosen = Random.Range(0, rndRadDirectionList.Count);
+            indexChosen = UnityEngine.Random.Range(0, rndRadDirectionList.Count);
             rndRadDirection = rndRadDirectionList[indexChosen];//(Mathf.Round(Random.Range(0, 4)) / 4f) * (2 * Mathf.PI);
-            ai_direction = new Vector2(Mathf.Cos(rndRadDirection), -Mathf.Sin(rndRadDirection));
-            ai_facing = Direction2Deg(-ai_direction.y, ai_direction.x);
-            ai_dir = new Vector3Int(Mathf.RoundToInt(Mathf.Cos(rndRadDirection)), -Mathf.RoundToInt(Mathf.Sin(rndRadDirection)), 0);
-            GameObject tmp_spot_obj = foreground.GetComponent<Tilemap>().GetInstantiatedObject(ai_gridpos + ai_dir);
-            if (tmp_spot_obj!=null)
+            _enemyInputDirection = new Vector2(Mathf.Cos(rndRadDirection), -Mathf.Sin(rndRadDirection));
+            _enemyFacingDirection = Direction2Deg(-_enemyInputDirection.y, _enemyInputDirection.x);
+            _enemyMoveDirection = new Vector3Int(Mathf.RoundToInt(Mathf.Cos(rndRadDirection)), -Mathf.RoundToInt(Mathf.Sin(rndRadDirection)), 0);
+            GameObject tmp_spot_obj = _mainControl.GetInstantiatedObject(_enemyGridPosition + _enemyMoveDirection);
+            if (tmp_spot_obj != null)
             {
                 if (tmp_spot_obj.tag == "obstacle")
                 {
-                    if (spot_obj.GetComponent<state_chg>().crossable){
+                    if (tmp_spot_obj.GetComponent<state_chg>().Crossable)
+                    {
                         dirObtained = true;
                     }
                     else
@@ -257,11 +308,11 @@ public class enemy_ai : MonoBehaviour
                 dirObtained = true;
             }
         }
-        
+
         return;
     }
 
-    IEnumerator followPlayer()
+    IEnumerator FollowPlayer()
     {
 
         yield return new WaitForEndOfFrame();

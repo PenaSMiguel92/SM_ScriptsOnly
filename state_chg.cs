@@ -1,7 +1,9 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Tilemaps;
+
 
 public class TileandObject
 {
@@ -14,37 +16,62 @@ public class TileandObject
         pushableObject = _pushableObject;
     }
 }
-
-public class state_chg : MonoBehaviour
+public interface IStateChange 
 {
-    public bool state; //whether or not disabled with block, false - 
-    public bool crossable;
-    public bool crossing;
-    private bool endAnim;
-    public Vector3Int pushableTileLoc;
-    public GameObject pushableObject;
-    public int type; // 0 - hole, 1 - electric switch
-    public Sprite[] sprites; //sprites to use.
-    private AudioClip soundUse;
-    private Tilemap mainTileMap;
-    private Vector3Int TileLoc;
+    public bool State { get; set; }
+    public bool Crossable { get; set; }
+    public bool Crossing { get; set; }
+    public TrapType Type { get; }
+    public TileandObject getTileandObjectBack();
+    public void storeTileandObject(TileandObject _tileandobject);
+
+}
+
+
+public class state_chg : MonoBehaviour, IStateChange
+{
+    [SerializeField] private TrapType _type; // 0 - hole, 1 - electric switch
+    public TrapType Type {get { return _type; } }
+    [SerializeField] private Sprite[] _sprites; //sprites to use.
+    [SerializeField] private AudioClip _soundUse;
+
+    private bool _state; //whether or not disabled with block, false - 
+    public bool State {get { return _state; } set { _state = value; } }
+    private bool _crossable;
+    public bool Crossable {get { return _crossable; } set { _crossable = value; } }
+    private bool _crossing;
+    public bool Crossing {get { return _crossing; } set { _crossing = value; } }
+    
+    
+    
+    private bool _endAnim;
+    private Vector3Int _pushableTileLoc;
+    private GameObject _pushableObject;
+    private Vector3Int _tileLoc;
+    private GameControl _mainControl;
+    private AudioManager _audioManager;
+
+    
     void Start()
     {
-        state = false;
-        gameObject.GetComponent<SpriteRenderer>().sprite = sprites[0];
-        soundUse = GameObject.FindGameObjectWithTag("GameController").GetComponent<GameControl>().audioClips[4];
-        mainTileMap = GameObject.FindGameObjectWithTag("GameController").GetComponent<GameControl>().foreground.GetComponent<Tilemap>();
-        TileLoc = mainTileMap.LocalToCell(gameObject.GetComponent<Transform>().localPosition);
+        _mainControl = GameControl.Main;
+        _audioManager = AudioManager.Main;
+        _mainControl.onGameStart += OnGameStart;
     }
-
+    void OnGameStart(object _sender, EventArgs _e)
+    {
+        _state = false;
+        gameObject.GetComponent<SpriteRenderer>().sprite = _sprites[0];
+        _tileLoc = _mainControl.GetGridPosition(gameObject.GetComponent<Transform>().localPosition);
+    }
     void Update()
     {
-        if (!state && type < 2 && gameObject != null)
+        if (!_state && (int) _type < 2)
         {
-            int crossingTst = crossing ? 1 : 0;
-            gameObject.GetComponent<SpriteRenderer>().sprite = sprites[crossingTst];
+            int crossingTst = _crossing ? 1 : 0;
+            gameObject.GetComponent<SpriteRenderer>().sprite = _sprites[crossingTst];
         }
-        if (!state && type == 6 && gameObject != null)
+        if (!_state && (int) _type == 6)
         {
             int coin_sum = 0;
             GameObject[] coins = GameObject.FindGameObjectsWithTag("pickup");
@@ -57,14 +84,18 @@ public class state_chg : MonoBehaviour
             }
             if (coin_sum < 1)
             {
-                state = true;
-                AudioSource.PlayClipAtPoint(soundUse, gameObject.GetComponent<Transform>().localPosition);
-                StartCoroutine(playAnimation(gameObject, new Vector2(0, 20), sprites, false));
+                _state = true;
+                _audioManager.PlaySound(SoundType.Explosion, gameObject.GetComponent<Transform>().localPosition);
+                //StartCoroutine(playAnimation(gameObject, new Vector2(0, 20), _sprites, false));
             }
         }
-        if (state && type == 6 && endAnim)
+        if (_state && _crossable)
         {
-            mainTileMap.SetTile(TileLoc, null);
+            gameObject.GetComponent<SpriteRenderer>().sprite = _sprites[_sprites.Length - 1];
+        }
+        if (_state && (int) _type == 6 && _endAnim)
+        {
+            _mainControl.SetTile(_tileLoc, null);
             Destroy(gameObject);
         }
         
@@ -79,10 +110,10 @@ public class state_chg : MonoBehaviour
     }
     IEnumerator playAnimation(GameObject obj, Vector2 frames, Sprite[] sprites, bool loop) //frames is vect2d with x being start and y being end frames
     {
-        endAnim = false;
+        _endAnim = false;
         int curFrame = 0;
         int timer1 = 0;
-        while (!endAnim)
+        while (!_endAnim)
         {
             timer1 += 1;
             if (timer1 > 20)
@@ -97,7 +128,7 @@ public class state_chg : MonoBehaviour
                     curFrame = Mathf.RoundToInt(frames.x);
                     if (!loop)
                     {
-                        endAnim = true;
+                        _endAnim = true;
                     }
                 }
 
@@ -108,12 +139,47 @@ public class state_chg : MonoBehaviour
     }
     public TileandObject getTileandObjectBack()
     {
-        return new TileandObject(pushableTileLoc, pushableObject);
+        return new TileandObject(_pushableTileLoc, _pushableObject);
     }
 
     public void storeTileandObject(TileandObject _tileandobject)
     {
-        pushableTileLoc = _tileandobject.pushableTileLoc;
-        pushableObject = _tileandobject.pushableObject;
+        _pushableTileLoc = _tileandobject.pushableTileLoc;
+        _pushableObject = _tileandobject.pushableObject;
     }
+
+     // IEnumerator playOpenDoorAnimation(GameObject obj)
+    // {
+    //     bool endAnim = false;
+    //     int curFrame = 1;
+    //     int timer1 = 0;
+    //     //updateSprite(obj, obj.GetComponent<state_chg>().sprites[curFrame], new Vector3());
+    //     while (!endAnim && obj != null)
+    //     {
+    //         //print(timer1);
+    //         //print(curFrame);
+    //         timer1 += 1;
+    //         if (timer1 > 20)
+    //         {
+    //             timer1 = 0;
+                
+                
+                
+    //             curFrame = curFrame + 1 >= obj.GetComponent<state_chg>().sprites.Length-1 ? obj.GetComponent<state_chg>().sprites.Length-1 : curFrame + 1;
+    //             updateSprite(obj, obj.GetComponent<state_chg>().sprites[curFrame], new Vector3());
+    //             if (curFrame >= obj.GetComponent<state_chg>().sprites.Length-1)
+    //             {
+
+    //                 //curFrame = 0;
+                    
+    //                 Vector3Int objGridPos = foreground.GetComponent<Tilemap>().LocalToCell(obj.GetComponent<Transform>().localPosition);
+    //                 foreground.GetComponent<Tilemap>().SetTile(objGridPos, null);
+    //                 endAnim = true;
+    //             }
+                
+    //         }
+            
+    //         yield return new WaitForEndOfFrame();
+    //     }
+    // }
 }
