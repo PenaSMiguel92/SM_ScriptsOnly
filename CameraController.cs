@@ -1,19 +1,14 @@
 using System;
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
-public interface ICamera
-{
-
-}
-
+public enum CameraState { Loading, Following}
 public class CameraController : MonoBehaviour
 {
-    [SerializeField] private Transform _mainCameraTransform;
     public static CameraController Main;
     private GameControl _mainControl;
-    private IPlayer _playerToFollow;
+    private CameraState _state = CameraState.Loading;
+    private Transform _mainTransform;
+    private Player _playerToFollow;
 
     void Awake()
     {
@@ -21,20 +16,23 @@ public class CameraController : MonoBehaviour
     }
     void Start()
     {
-        
         _mainControl = GameControl.Main;
         _mainControl.onGameStart += OnGameStart;
+        
 
     }
-
     void OnGameStart(object _sender, EventArgs _e)
     {
-        _playerToFollow = GetComponent<IPlayer>();
+        _playerToFollow = Player.Main;
+        _mainTransform = gameObject.GetComponent<Transform>();
+        _mainTransform.localPosition = _playerToFollow.GetPosition();
+        _state = CameraState.Following;
     }
 
     void Update()
     {
+        if (_state == CameraState.Loading) return;
         if (_playerToFollow == null) return;
-        _mainCameraTransform.localPosition = _playerToFollow.LocalPosition;
+        _mainTransform.localPosition = _playerToFollow.GetPosition();
     }
 }

@@ -5,34 +5,55 @@ using UnityEngine;
 using UnityEngine.Tilemaps;
 using UnityEngine.SceneManagement;
 
-public enum GameState {Cutscene, Menu, Pause, LevelPlay, LevelEnd}
+public enum GameState {Loading, Cutscene, Menu, Pause, LevelPlay, LevelEnd}
 public enum DeathType { Standard, Burn, Electricution, Acid };
 public interface IGameControl
 {
     public GameState State { get; }
     public Tilemap Foreground { get; }
+    public Tilemap Overlap { get; }
 
     public Vector3Int GetGridPosition(Vector3 _position);
     public GameObject GetInstantiatedObject(Vector3Int _location);
     public void SetTile(Vector3Int _location, TileBase _tile);
     public TileBase GetTile(Vector3Int _location);
     public bool HasTile(Vector3Int _location);
+    public void MoveTile(Vector3Int _currentLocation, Vector3Int _nextLocation);
+    public void StoreTile(Vector3Int _currentLocation, Vector3Int _nextLocation);
+    public GameObject GetInstantiatedOverlappingObject(Vector3Int _currentLocation);
+    public void RestoreTile(Vector3Int _currentLocation, Vector3Int _nextLocation);
+    public void FinishLevel();
+    public void InvokeTrapStateChange(bool _state);
+}
+
+public class ITrapStateChange : EventArgs
+{
+    public bool State;
+    public ITrapStateChange(bool _state)
+    {
+        State = _state;
+    }
 }
 
 public class GameControl : MonoBehaviour, IGameControl
 {
     [SerializeField] private GameObject _foregroundObject;
-    
+    [SerializeField] private GameObject _overlapObject;
     public static GameControl Main;
-    
+    private AudioManager _audioManager;
+    private Player _currentPlayer;
+
     private Tilemap _foreground;
     public Tilemap Foreground {get { return _foreground; } }
 
-    private GameState _state;
+    private Tilemap _overlap;
+    public Tilemap Overlap {get { return _overlap; } }
+    private GameState _state = GameState.Loading;
     public GameState State {get { return _state; } }
 
     public event EventHandler onGameStart;
     public event EventHandler onGameFadeToNextLevel;
+    public event EventHandler<ITrapStateChange> onTrapStateChange;
 
     //public event UnityAction  
 
@@ -43,10 +64,15 @@ public class GameControl : MonoBehaviour, IGameControl
     // Start is called before the first frame update
     void Start()
     {
+        _audioManager = AudioManager.Main;
+        _currentPlayer = Player.Main;
+        _currentPlayer.onPlayerDeath += RestartLevel;
         _foreground = _foregroundObject.GetComponent<Tilemap>();
+        _overlap = _overlapObject.GetComponent<Tilemap>();
         _foregroundObject.GetComponent<TilemapRenderer>().forceRenderingOff = true;
+        _overlapObject.GetComponent<TilemapRenderer>().forceRenderingOff = true;
         SetPushableObjects();
-        StartCoroutine(fadeInfromLastScene(Time.realtimeSinceStartup));
+        StartCoroutine(FadeInfromLastScene(Time.realtimeSinceStartup));
     }
 
     void SetPushableObjects()
@@ -82,6 +108,46 @@ public class GameControl : MonoBehaviour, IGameControl
     {
         return _foreground.HasTile(_location);
     }
+    public void MoveTile(Vector3Int _currentLocation, Vector3Int _nextLocation)
+    {
+        TileBase targetTile = _foreground.GetTile(_currentLocation);
+        _foreground.SetTile(_nextLocation, targetTile);
+        _foreground.SetTile(_currentLocation, null);
+    }
+    public void StoreTile(Vector3Int _currentLocation, Vector3Int _nextLocation)
+    {
+        TileBase targetTile = _foreground.GetTile(_currentLocation);
+        _overlap.SetTile(_nextLocation, targetTile);
+        // TileBase targetTile = _foreground.GetTile(_currentLocation);
+        // GameObject storageObject = _foreground.GetInstantiatedObject(_nextLocation);
+        // switch(storageObject.tag)
+        // {
+        //     case "trap":
+        //         TrapHandle tmp_traphandle = storageObject.GetComponent<TrapHandle>();
+        //         tmp_traphandle.StoreTile();
+        //         break;
+        //     case "switch":
+        //         TrapSwitchHandle tmp_trapswitchhandle = storageObject.GetComponent<TrapSwitchHandle>();
+        //         tmp_trapswitchhandle.StoreTile();
+        //         break;
+        // }
+        _foreground.SetTile(_currentLocation, null);
+    }
+    public GameObject GetInstantiatedOverlappingObject(Vector3Int _currentLocation)
+    {
+        return _overlap.GetInstantiatedObject(_currentLocation);
+    }
+    public void RestoreTile(Vector3Int _currentLocation, Vector3Int _nextLocation)
+    {
+        TileBase targetTile = _overlap.GetTile(_currentLocation);
+        _foreground.SetTile(_nextLocation, targetTile);
+        _overlap.SetTile(_currentLocation, null);
+    }
+    public void FinishLevel()
+    {
+        _audioManager.PlaySound(SoundType.PassLevel, _currentPlayer.GetPosition());
+        StartCoroutine(FadeToNextScene(SceneManager.GetActiveScene().buildIndex + 1, Time.realtimeSinceStartup));
+    }
     // int Direction2Deg(float y, float x)
     // {
     //     float degrees = Mathf.Rad2Deg * Mathf.Atan2(y,x);
@@ -105,7 +171,7 @@ public class GameControl : MonoBehaviour, IGameControl
     // }
     
 
-    IEnumerator fadeInfromLastScene(double startTime)
+    IEnumerator FadeInfromLastScene(double startTime)
     {
         bool endAnim = false;
         while (!endAnim)
@@ -114,6 +180,7 @@ public class GameControl : MonoBehaviour, IGameControl
             {
                 endAnim = true;
                 onGameStart?.Invoke(this, EventArgs.Empty);
+                _state = GameState.LevelPlay;
             }
             else
             {
@@ -124,7 +191,7 @@ public class GameControl : MonoBehaviour, IGameControl
         }
         
     }
-    IEnumerator fadeToNextScene(int index, double startTime)
+    IEnumerator FadeToNextScene(int index, double startTime)
     {
         onGameFadeToNextLevel?.Invoke(this, EventArgs.Empty);
         bool endAnim = false;
@@ -145,9 +212,14 @@ public class GameControl : MonoBehaviour, IGameControl
         }
         
     }
-        
-
-   
+    public void RestartLevel(object _sender, EventDeath _e)
+    {
+        StartCoroutine(FadeToNextScene(SceneManager.GetActiveScene().buildIndex, Time.realtimeSinceStartup));
+    }
+    public void InvokeTrapStateChange(bool _state)
+    {
+        onTrapStateChange?.Invoke(this, new ITrapStateChange(_state));
+    }
 
     //}
 }

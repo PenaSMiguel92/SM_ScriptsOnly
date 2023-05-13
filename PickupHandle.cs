@@ -9,7 +9,7 @@ public interface IPickupType
     public PickUpState State { get; }
     public string Name { get; }
 }
-public class pickup_type : MonoBehaviour, IPickupType
+public class PickupHandle : MonoBehaviour, IPickupType
 {
 
     [SerializeField] private PickUpEnum _typeOfPickup;
@@ -44,7 +44,7 @@ public class pickup_type : MonoBehaviour, IPickupType
     {
         if (_state == PickUpState.Loading) return;
         if (_state == PickUpState.PickedUp) Destroy(gameObject);
-        if ((_mainPlayer.LocalPosition - _pickupTransform.localPosition).magnitude < 0.707)
+        if ((_mainPlayer.GetPosition() - _pickupTransform.localPosition).magnitude < 0.707)
         {
             _mainPlayer.AddToInventory(_typeOfPickup);
             _state = PickUpState.PickedUp;
