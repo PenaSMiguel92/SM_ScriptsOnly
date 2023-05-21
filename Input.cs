@@ -4,12 +4,29 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
+public enum InventoryDirection {Left, Right}
+
 public class InputValues : EventArgs
 {
     public Vector2 PlayerDirection;
     public InputValues(Vector2 _plrDir)
     {
         PlayerDirection = _plrDir;
+    }
+}
+
+public interface IInventorySelect
+{
+    public InventoryDirection Direction { get; }
+}
+
+public class InventorySelect : EventArgs, IInventorySelect
+{
+    InventoryDirection _invDir;
+    public InventoryDirection Direction {get { return _invDir; } }
+    public InventorySelect(InventoryDirection _direction)
+    {
+        _invDir = _direction;
     }
 }
 
@@ -21,7 +38,8 @@ public class Input : MonoBehaviour
 
     public event EventHandler<InputValues> onPlayerWalk;
     public event EventHandler<InputValues> onPlayerIdle;
-    public event EventHandler<InputValues> onPlayerInteract;
+    public event EventHandler onPlayerInteract;
+    public event EventHandler<InventorySelect> onPlayerInventorySelect;
 
     private void Awake()
     {
@@ -33,6 +51,8 @@ public class Input : MonoBehaviour
         playerInputActions = new PlayerInputActions();
         playerInputActions.Player.Enable();
         playerInputActions.Player.Interact.performed += OnInteract;
+        playerInputActions.Player.InventorySelectLeft.performed += OnInventorySelectLeft;
+        playerInputActions.Player.InventorySelectRight.performed += OnInventorySelectRight;
     }
 
     private void Update()
@@ -48,10 +68,17 @@ public class Input : MonoBehaviour
 
     private void OnInteract(InputAction.CallbackContext context)
     {
-        onPlayerInteract?.Invoke(this, new InputValues(_playerDirection));
+        onPlayerInteract?.Invoke(this, EventArgs.Empty);
     }
 
-
+    private void OnInventorySelectLeft(InputAction.CallbackContext context)
+    {
+        onPlayerInventorySelect?.Invoke(this, new InventorySelect(InventoryDirection.Left));
+    }
+    private void OnInventorySelectRight(InputAction.CallbackContext context)
+    {
+        onPlayerInventorySelect?.Invoke(this, new InventorySelect(InventoryDirection.Right));
+    }
 
 }
 

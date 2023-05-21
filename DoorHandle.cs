@@ -3,7 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public enum DoorType {CoinDoor, RedDoor, BlueDoor, GreenDoor, YellowDoor}
+public enum DoorType {CoinDoor, RedDoor, BlueDoor, GreenDoor, YellowDoor, Breakable}
 public enum DoorState {Loading, Idle, Opening}
 public interface IDoor
 {
@@ -21,12 +21,17 @@ public class DoorHandle : MonoBehaviour, IStateChange<DoorType, DoorState>
 
     private Vector3Int _tileLoc;
     private Transform _curTransform;
+    private SpriteRenderer _curRenderer;
     private GameControl _mainControl;
     private AudioManager _audioManager;
     
     private int _curFrame;
+    private const int _FRAMERATE = 8;
     public event EventHandler onAnimationEnd;
 
+    private int bw_currentStep = 0; //bw = breakable wall variables
+    private bool bw_timerSet = false;
+    private float bw_timerValue;
     // Start is called before the first frame update
     void Start()
     {
@@ -34,6 +39,7 @@ public class DoorHandle : MonoBehaviour, IStateChange<DoorType, DoorState>
         _audioManager = AudioManager.Main;
         _mainControl.onGameStart += OnGameStart;
         onAnimationEnd += OnAnimationEnd;
+        _curRenderer = gameObject.GetComponent<SpriteRenderer>();
         _curTransform = gameObject.GetComponent<Transform>();
         if (_mainControl.State == GameState.LevelPlay)
         {
@@ -43,24 +49,23 @@ public class DoorHandle : MonoBehaviour, IStateChange<DoorType, DoorState>
     void OnGameStart(object _sender, EventArgs _e)
     {
         _state = DoorState.Idle;
-        gameObject.GetComponent<SpriteRenderer>().sprite = _sprites[0];
+        _curRenderer.sprite = _sprites[0];
         _tileLoc = _mainControl.GetGridPosition(_curTransform.localPosition);
     }
     void OnAnimationEnd(object _sender, EventArgs _e)
     {
-        _mainControl.SetTile(_tileLoc, null);
+        _mainControl.SetTile(_tileLoc, null, TilemapUse.Foreground);
     }
     void UpdateSprite( Sprite sprite, Vector3 rotation)
     {
         _curTransform.localEulerAngles = rotation;
-        SpriteRenderer sp_rend = gameObject.GetComponent<SpriteRenderer>();
-        sp_rend.sprite = sprite;
+        _curRenderer.sprite = sprite;
         return;
     }
     IEnumerator PlayAnimation(bool _loop)
     {
         bool end_anim = false;
-        const int FRAME_RATE = 20; //how many frames per animation frame.
+        const int FRAME_RATE = _FRAMERATE; //how many frames per animation frame.
         int cur_frame = (_curFrame>_sprites.Length - 1) ? 0 : _curFrame;
         int timer1 = 0;
         while (!end_anim)
@@ -89,6 +94,23 @@ public class DoorHandle : MonoBehaviour, IStateChange<DoorType, DoorState>
         }
         onAnimationEnd?.Invoke(this, EventArgs.Empty);
     }
+    void HandleBreakable()
+    {
+        if (bw_timerSet) return;
+        bw_timerSet = true;
+        bw_timerValue = Time.realtimeSinceStartup;
+        bw_currentStep += 1;
+        _curRenderer.sprite = _sprites[bw_currentStep];
+    }
+    void UpdateBreakableTimerState()
+    {
+        if (!bw_timerSet) return;
+        float tmp_maxTime = 0.25f;
+        if (Time.realtimeSinceStartup - bw_timerValue > tmp_maxTime)
+        {
+            bw_timerSet = false;
+        }
+    }
     void DetermineCoinDoorState()
     {
         int coin_sum = 0;
@@ -113,36 +135,42 @@ public class DoorHandle : MonoBehaviour, IStateChange<DoorType, DoorState>
     }
     public bool TestDoor(List<PickUpEnum> _plrInventory)
     {
+        if (_state == DoorState.Opening) return false;
         switch (_type)
         {
             // case TrapType.ElectricalBox:
             //     break;
+            case DoorType.Breakable:
+                if (bw_timerSet) return false;
+                HandleBreakable();
+                if (bw_currentStep > 4)
+                {
+                    _curFrame = bw_currentStep;
+                    OpenDoor();
+                }
+                break;
             case DoorType.BlueDoor:
                 if (_plrInventory.Contains(PickUpEnum.BlueKey))
                 {
                     OpenDoor();
-                    return true;
                 }
                 break;
             case DoorType.RedDoor:
                 if (_plrInventory.Contains(PickUpEnum.RedKey))
                 {
                     OpenDoor();
-                    return true;
                 }
                 break;
             case DoorType.GreenDoor:
                 if (_plrInventory.Contains(PickUpEnum.GreenKey))
                 {
                     OpenDoor();
-                    return true;
                 }
                 break;
             case DoorType.YellowDoor:
                 if (_plrInventory.Contains(PickUpEnum.YellowKey))
                 {
                     OpenDoor();
-                    return true;
                 }
                 break;
             
@@ -156,6 +184,10 @@ public class DoorHandle : MonoBehaviour, IStateChange<DoorType, DoorState>
         if (_state == DoorState.Idle && _type == DoorType.CoinDoor)
         {
             DetermineCoinDoorState();
+        }
+        if (_state == DoorState.Idle && _type == DoorType.Breakable)
+        {
+            UpdateBreakableTimerState();
         }
     }
     

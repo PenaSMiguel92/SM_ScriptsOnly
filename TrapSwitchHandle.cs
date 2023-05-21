@@ -61,18 +61,13 @@ public class TrapSwitchHandle : MonoBehaviour, IStateChange<TrapType, TrapState>
             case "enemy":
                 _proceed = _state == TrapState.Set;
                 break;
-            case "Player":
+            case "player":
                 if (_state == TrapState.Crossing)
                 {
-                    tmp_pushable = _mainControl.GetInstantiatedOverlappingObject(_tileLoc);
+                    tmp_pushable = _mainControl.GetInstantiatedObject(_tileLoc,TilemapUse.Moveables);
                     tmp_pushableHandle = tmp_pushable.GetComponent<PushableHandle>();
-                    tmp_pushableHandle.CrossingExit = true;
                     _proceed = tmp_pushableHandle.TestPush(_moveDirection);
-                    if (!_proceed)
-                    {
-                        tmp_pushableHandle.CrossingExit = false;
-                    }
-                    else
+                    if (_proceed)
                     {
                         _state = TrapState.Set;
                     }
@@ -96,12 +91,12 @@ public class TrapSwitchHandle : MonoBehaviour, IStateChange<TrapType, TrapState>
                 if (_state == TrapState.Set)
                 {
                     _state = TrapState.Crossing;
-                    tmp_pushableHandle.CrossingEnter = true;
                     _proceed = true;
                     //_mainControl.StoreTile(tmp_pushable.TileLocation, _tileLoc);
                 }
                 else
                 {
+                    
                     if (tmp_pushableHandle.Type == _type)        
                     {
                         _proceed = true;

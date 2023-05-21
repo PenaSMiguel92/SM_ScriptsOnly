@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 
-public enum PlayerState { Loading, Idle, Walking, Death };
+public enum PlayerState { Loading, Idle, Walking, Sliding, Death };
 public interface IPlayer 
 {
     public PlayerState State { get; }
@@ -35,6 +35,8 @@ public class Player : MonoBehaviour, IPlayer
     [SerializeField] private Sprite[] _plrBurnDeath;
     [SerializeField] private Sprite[] _plrElectricutionDeath;
     [SerializeField] private Sprite[] _plrAcidDeath;
+    [SerializeField] private GameObject _droppedBomb;
+
     private Sprite[] _plrCurrentSprites;
     private int _plrScore;
     public int Score {get { return _plrScore; } }
@@ -53,14 +55,14 @@ public class Player : MonoBehaviour, IPlayer
     private float _plrMoveT;
     private int _plrFacingDirection; //direction, player is facing in angle;
     private const int _PLRFRAMERATE = 8;
-    private const float _PLRMOVESPEED = 4f;
+    private float _plrMoveSpeed = 4f;
     private int _plrLastFrame; //animation frame.
     private IEnumerator _plrAnimation;
     private double _plrTimerRT; //timer real time since event.
     private float _plrTimer1; //timing frames
     //gameplay variables
-
     private List<PickUpEnum> _plrInventory = new List<PickUpEnum>();
+    private PickUpEnum _plrCurrentSelection = PickUpEnum.None;
     //private string[] tools; //pickup bomb and torch, select which one is active.
     private PickUpEnum _plrSelectedTool; //selected tool, index above.
     public static Player Main;
@@ -86,6 +88,8 @@ public class Player : MonoBehaviour, IPlayer
         _plrScore = 0;
         onPlayerDeath += Death;
         _inputManager.onPlayerWalk += OnPlayerMove;
+        _inputManager.onPlayerInteract += OnPlayerInteract;
+        _inputManager.onPlayerInventorySelect += OnPlayerInventorySelect;
 
         _plrState = PlayerState.Idle;
     }
@@ -112,10 +116,118 @@ public class Player : MonoBehaviour, IPlayer
                 break;
         }
         _audioManager.PlaySound(SoundType.Death, _plrPosition);
+        if (_plrAnimation != null) StopCoroutine(_plrAnimation);
         _plrAnimation = PlayAnimation(false);
         StartCoroutine(_plrAnimation);
     }
 
+    void SetWalkToSelectedInventory()
+    {
+        switch(_plrCurrentSelection)
+        {
+            case PickUpEnum.None:
+                _plrCurrentSprites = _plrWalk;
+                break;
+            case PickUpEnum.Bomb:
+                _plrCurrentSprites = _plrBombWalk;
+                break;
+            case PickUpEnum.Torch:
+                _plrCurrentSprites = _plrTorchWalk;
+                break;
+        }
+
+    }
+    void OnPlayerInventorySelect(object _sender, InventorySelect _e)
+    {
+        List<PickUpEnum> tmp_selectables =  new List<PickUpEnum>{ PickUpEnum.None, PickUpEnum.Bomb, PickUpEnum.Torch };
+        int _curIndex = tmp_selectables.IndexOf(_plrCurrentSelection);
+        int _dir = _e.Direction == InventoryDirection.Left ? -1 : 1;
+        Debug.Log(_curIndex);
+        bool _found = false;
+        while (!_found)
+        {
+            _curIndex += _dir;
+            Debug.Log(_curIndex);
+            _curIndex = _curIndex < 0 ? tmp_selectables.Count - 1 : _curIndex;
+            _curIndex = _curIndex >= tmp_selectables.Count ? 0 : _curIndex;
+            if (_plrInventory.Contains(tmp_selectables[_curIndex])) break;
+            if (tmp_selectables[_curIndex] == PickUpEnum.None) break;
+        }
+        _plrCurrentSelection = tmp_selectables[_curIndex];
+    }
+    void OnPlayerInteract(object _sender, EventArgs _e)
+    {
+        if (_plrState == PlayerState.Death) return;
+        switch(_plrCurrentSelection)
+        {
+            case PickUpEnum.Bomb:
+                GameObject _bombObj = Instantiate(_droppedBomb, _plrPosition += _plrMoveDirection, Quaternion.Euler(0, 0, 0));
+                _bombObj.GetComponent<BombHandle>().SpawnTime = Time.realtimeSinceStartup;
+                int _bombIndex = _plrInventory.IndexOf(PickUpEnum.Bomb);
+                _plrInventory.RemoveAt(_bombIndex);
+                _plrCurrentSelection = PickUpEnum.None;
+                break;
+        }
+
+    }
+    void TestNextLocation(Vector3Int _location, Vector3Int _moveDirection)
+    {
+        bool _proceed = true;
+        List<TilemapUse> tmp_tilemaps = new List<TilemapUse> { TilemapUse.Foreground, TilemapUse.Moveables };
+        foreach (TilemapUse tmp_tilemap in tmp_tilemaps)
+        {
+            if (!_mainControl.HasTile(_location, tmp_tilemap)) continue;
+            GameObject tmp_spot_obj = _mainControl.GetInstantiatedObject(_location, tmp_tilemap);
+            if (tmp_spot_obj == null) continue;
+            switch (tmp_spot_obj.tag)
+            {        
+                case "pickup":
+                    _proceed = true;
+                    break;
+                case "push":
+                    _proceed = tmp_spot_obj.GetComponent<PushableHandle>().TestPush(_moveDirection);
+                    break;
+                case "door":
+                    _proceed = tmp_spot_obj.GetComponent<DoorHandle>().TestDoor(_plrInventory);
+                    break;
+                case "switch":
+                    _proceed = tmp_spot_obj.GetComponent<TrapSwitchHandle>().TestTrapSwitch(gameObject, _moveDirection);
+                    break;
+                case "trap":
+                    //ask object whether it is currently active, what type of death to initiate, and then when or not player can continue moving.
+                    var TrapStatus = tmp_spot_obj.GetComponent<TrapHandle>().TestTrap(_moveDirection, gameObject);
+                    _proceed = TrapStatus.Item3;
+                    if (TrapStatus.Item2)
+                    {
+                        Kill(TrapStatus.Item1);
+                    }        
+                    break;
+                case "finish":
+                    _mainControl.FinishLevel();
+                    break;
+                case "mover":
+                    _proceed = true;
+                    break;
+                default:
+                    _proceed = false;
+                    break;
+
+            }
+
+        }
+        
+        if (_proceed)
+        {
+            _plrMoveDirection = _moveDirection;
+            _plrGridPosition += _plrMoveDirection;
+            _plrMoveT = 0f;
+            if (_plrAnimation != null) StopCoroutine(_plrAnimation);
+            _plrAnimation = PlayAnimation(true);
+            StartCoroutine(_plrAnimation);
+            _plrMoveSpeed = 4f;
+            _plrState = PlayerState.Walking;
+        }
+    }
     void OnPlayerMove(object _sender, InputValues _e)
     {
         if (_plrState == PlayerState.Death) return;
@@ -128,75 +240,11 @@ public class Player : MonoBehaviour, IPlayer
         {
             _plrInputDirection = _e.PlayerDirection.normalized; //Only up, right, left or down allowed. 
         }
-        bool _proceed = false;
         _plrFacingDirection = Direction2Deg(_plrInputDirection.y, -_plrInputDirection.x);
         Vector3Int tmp_plrMoveDirection = new Vector3Int(Mathf.RoundToInt(Mathf.Cos(Mathf.Deg2Rad * _plrFacingDirection)), Mathf.RoundToInt(Mathf.Sin(Mathf.Deg2Rad * _plrFacingDirection)), 0);
         Vector3Int tmp_testingLocation = _plrGridPosition + tmp_plrMoveDirection;
-        if (_mainControl.HasTile(tmp_testingLocation))
-        {
-            GameObject tmp_spot_obj = _mainControl.GetInstantiatedObject(tmp_testingLocation);
-            if (tmp_spot_obj != null)
-            {
-                switch (tmp_spot_obj.tag)
-                {
-                    case "wall":
-                        _proceed = false;
-                        break;
-                    case "pickup":
-                        _proceed = true;
-                        break;
-                    case "push":
-                        _proceed = tmp_spot_obj.GetComponent<PushableHandle>().TestPush(tmp_plrMoveDirection);
-                        break;
-                    case "door":
-                        _proceed = tmp_spot_obj.GetComponent<DoorHandle>().TestDoor(_plrInventory);
-                        break;
-                    case "switch":
-                        _proceed = tmp_spot_obj.GetComponent<TrapSwitchHandle>().TestTrapSwitch(gameObject, tmp_plrMoveDirection);
-                        break;
-                    case "trap":
-                        //ask object whether it is currently active, what type of death to initiate, and then when or not player can continue moving.
-                        var TrapStatus = tmp_spot_obj.GetComponent<TrapHandle>().TestTrap(tmp_plrMoveDirection, gameObject);
-                        _proceed = TrapStatus.Item3;
-                        if (TrapStatus.Item2)
-                        {
-                            Kill(TrapStatus.Item1);
-                        }
-                        
-                        break;
-                    case "Finish":
-                        //finish the level.
-                        _proceed = true;
-                        _mainControl.FinishLevel();
-                        break;
-                    default:
-                        _proceed = true;
-                        break;
+        TestNextLocation(tmp_testingLocation, tmp_plrMoveDirection);
 
-                }
-            }
-            else
-            {
-                _proceed = true;
-            }
-
-        }
-        else
-        {
-            _proceed = true;
-        }
-        if (_proceed)
-        {
-            _plrMoveDirection = tmp_plrMoveDirection;
-            _plrGridPosition += _plrMoveDirection;
-            _plrMoveT = 0f;
-            _plrCurrentSprites = _plrWalk;
-            _plrAnimation = PlayAnimation(true);
-            StartCoroutine(_plrAnimation);
-        
-            _plrState = PlayerState.Walking;
-        }
-        
     }
     int Direction2Deg(float y, float x)
     {
@@ -226,10 +274,7 @@ public class Player : MonoBehaviour, IPlayer
             if (timer1 > FRAME_RATE)
             {
                 timer1 = 0;
-
-
                 cur_frame += 1;
-                //cur_frame = cur_frame > (_plrCurrentSprites.Length - 1) ? _plrCurrentSprites.Length-1 : cur_frame;
                 if (cur_frame > _plrCurrentSprites.Length - 1)
                 {
                     if (!_loop || _plrState == PlayerState.Death)
@@ -261,24 +306,102 @@ public class Player : MonoBehaviour, IPlayer
             case PickUpEnum.Coin:
                 _plrScore += 100;
                 _audioManager.PlaySound(SoundType.Pickup, _plrPosition);
-                _mainControl.SetTile(_plrGridPosition, null);
+                _mainControl.SetTile(_plrGridPosition, null, TilemapUse.Foreground);
                 break;
             case PickUpEnum.CoinChest:
                 _plrScore += 500;
                 _audioManager.PlaySound(SoundType.Chest, _plrPosition);
-                _mainControl.SetTile(_plrGridPosition, null);
+                _mainControl.SetTile(_plrGridPosition, null, TilemapUse.Foreground);
                 break;
             default:
                 _plrInventory.Add(_pickup);
+                if (_pickup == PickUpEnum.Bomb || _pickup == PickUpEnum.Torch)
+                {
+                    _plrCurrentSelection = _pickup;
+                }
                 _audioManager.PlaySound(SoundType.Pickup, _plrPosition);
-                _mainControl.SetTile(_plrGridPosition, null);
+                _mainControl.SetTile(_plrGridPosition, null, TilemapUse.Foreground);
                 break;
+        }
+    }
+
+    void TestNextForcedLocation(Vector3Int _location, Vector3Int _moveDirection, float _speed)
+    {
+        bool _proceed = true;
+        List<TilemapUse> tmp_tilemaps = new List<TilemapUse> { TilemapUse.Foreground, TilemapUse.Moveables };
+        foreach (TilemapUse tmp_tilemap in tmp_tilemaps)
+        {
+            if (!_mainControl.HasTile(_location, tmp_tilemap)) continue;
+            GameObject tmp_spot_obj = _mainControl.GetInstantiatedObject(_location, tmp_tilemap);
+            if (tmp_spot_obj == null) continue;
+            switch (tmp_spot_obj.tag)
+            {        
+                case "pickup":
+                    _proceed = true;
+                    break;
+                case "push":
+                    _proceed = tmp_spot_obj.GetComponent<PushableHandle>().TestPush(_moveDirection);
+                    break;
+                case "door":
+                    _proceed = tmp_spot_obj.GetComponent<DoorHandle>().TestDoor(_plrInventory);
+                    break;
+                case "switch":
+                    _proceed = tmp_spot_obj.GetComponent<TrapSwitchHandle>().TestTrapSwitch(gameObject, _moveDirection);
+                    break;
+                case "trap":
+                    //ask object whether it is currently active, what type of death to initiate, and then when or not player can continue moving.
+                    var TrapStatus = tmp_spot_obj.GetComponent<TrapHandle>().TestTrap(_moveDirection, gameObject);
+                    _proceed = TrapStatus.Item3;
+                    if (TrapStatus.Item2)
+                    {
+                        Kill(TrapStatus.Item1);
+                    }        
+                    break;
+                case "finish":
+                    _mainControl.FinishLevel();
+                    break;
+                case "mover":
+                    _proceed = true;
+                    break;
+                default:
+                    _proceed = false;
+                    break;
+
+            }
+
+        }
+        
+        if (_proceed)
+        {
+            _plrMoveDirection = _moveDirection;
+            _plrGridPosition += _plrMoveDirection;
+            _plrMoveT = 0f;
+            if (_plrAnimation != null) StopCoroutine(_plrAnimation);
+            _plrMoveSpeed = _speed;
+            _plrState = PlayerState.Sliding;
         }
     }
 
     public void ForceMove(Vector3Int _direction, float _speed)
     {
+        if (_plrState == PlayerState.Death) return;
+        if (_plrState != PlayerState.Idle) return;
+        
+        _plrFacingDirection = Direction2Deg(_direction.y, -_direction.x);
+        Vector3Int tmp_plrMoveDirection = new Vector3Int(Mathf.RoundToInt(Mathf.Cos(Mathf.Deg2Rad * _plrFacingDirection)), Mathf.RoundToInt(Mathf.Sin(Mathf.Deg2Rad * _plrFacingDirection)), 0);
+        Vector3Int tmp_testingLocation = _plrGridPosition + tmp_plrMoveDirection;
+        TestNextForcedLocation(tmp_testingLocation, tmp_plrMoveDirection, _speed);
+    }
 
+    void PlayerLerpMove()
+    {
+        _plrMoveT = Mathf.Min(1, _plrMoveT + (Time.deltaTime*_plrMoveSpeed));
+        UpdatePosition(Vector3.Lerp(_plrPosition, _plrGridPosition + new Vector3(0.5f, 0.5f, 0), _plrMoveT)); 
+        if (_plrMoveT == 1)
+        {
+            _plrPosition = UpdatePosition( _plrGridPosition + new Vector3(0.5f, 0.5f, 0));
+            _plrState = PlayerState.Idle;
+        }
     }
 
     void Update()
@@ -288,271 +411,17 @@ public class Player : MonoBehaviour, IPlayer
         switch (_plrState)
         {
             case PlayerState.Idle:
-                if (_plrAnimation != null)
-                {
-                    StopCoroutine(_plrAnimation);
-                }
-                UpdateSprite(_plrWalk[0], new Vector3(0, 0, _plrFacingDirection - 90));
+                if (_plrAnimation != null) StopCoroutine(_plrAnimation);
+                SetWalkToSelectedInventory();
+                UpdateSprite(_plrCurrentSprites[0], new Vector3(0, 0, _plrFacingDirection - 90));
                 break;
             case PlayerState.Walking:
-                //_plrPosition = 
-                _plrMoveT = Mathf.Min(1, _plrMoveT + (Time.deltaTime*_PLRMOVESPEED));
-                UpdatePosition(Vector3.Lerp(_plrPosition, _plrGridPosition + new Vector3(0.5f, 0.5f, 0), _plrMoveT)); //_plrPosition + (Time.deltaTime * new Vector3(_plrMoveDirection.x, _plrMoveDirection.y, 0) * _PLRMOVESPEED));
-                if (_plrMoveT == 1) //((_plrPosition - (_plrGridPosition + new Vector3(0.5f, 0.5f, 0))).magnitude <= 0.05)
-                {
-                    _plrPosition = UpdatePosition( _plrGridPosition + new Vector3(0.5f, 0.5f, 0));
-                    _plrState = PlayerState.Idle;
-                }
+                PlayerLerpMove();
+                break;
+            case PlayerState.Sliding:
+                PlayerLerpMove();
                 break;
         }
-
-            
-    //             if (!_mainControl.HasTile(_plrGridPosition + _plrMoveDirection))
-    //             {
-    //                 _plrMoving = true;
-    //                 _plrGridPosition += _plrMoveDirection;
-    //             }
-    //             else
-    //             {
-    //                 //spot_obj = null;
-    //                 //spot_obj = null;
-    //                 GameObject spot_obj = _mainControl.GetInstantiatedObject(_plrGridPosition + _plrMoveDirection);
-    //                 if (spot_obj != null)
-    //                 {
-    //                     Vector3 obj_pos = spot_obj.GetComponent<Transform>().localPosition;
-    //                     Vector3Int obj_gridpos = _mainControl.GetGridPosition(obj_pos);
-    //                     GameObject nextTileObj = _mainControl.GetInstantiatedObject(obj_gridpos + _plrMoveDirection);
-    //                     switch (spot_obj.tag)
-    //                     {
-    //                         case "wall":
-    //                             //print("wall");
-    //                             return;
-    //                         case "pickup":
-    //                             //print("pickup");
-    //                             _plrMoving = true;
-    //                             _plrGridPosition += _plrMoveDirection;
-    //                             AddToInventory(spot_obj.GetComponent<pickup_type>().TypeOfPickup);
-    //                             return;
-                                
-    //                         case "push":
-    //                             if (_plrMoveDirection.magnitude == 1)
-    //                             {
-    //                                 if (!spot_obj.GetComponent<pushable_script>().Crossing) //move to spot_obj's location if it is currently crossing and saved to a different tile.
-    //                                 {
-    //                                     if (nextTileObj != null)
-    //                                     {
-    //                                         if (nextTileObj.tag == "obstacle" && (int) nextTileObj.GetComponent<state_chg>().Type < 2)
-    //                                         {
-    //                                             spot_obj.GetComponent<pushable_script>().SetProperties(_plrMoveDirection, true, obj_gridpos);
-    //                                             // invokePushObject(spot_obj);
-    //                                             _plrMoving = true;
-    //                                             _plrGridPosition += _plrMoveDirection;
-    //                                         }
-    //                                     }
-    //                                     else
-    //                                     {
-    //                                         spot_obj.GetComponent<pushable_script>().SetProperties(_plrMoveDirection, true, obj_gridpos);
-    //                                         //invokePushObject(spot_obj);
-    //                                         _plrMoving = true;
-    //                                         _plrGridPosition += _plrMoveDirection;
-    //                                     }
-    //                                 }
-    //                                 else
-    //                                 {
-    //                                     _plrMoving = true;
-    //                                     _plrGridPosition += _plrMoveDirection;
-    //                                 }
-
-
-    //                             }
-
-    //                             return;
-    //                         case "obstacle":
-    //                             if (_plrMoveDirection.magnitude == 1)
-    //                             {
-    //                                 if (spot_obj.tag == "obstacle")
-    //                                 {
-    //                                     // TrapType type_obstacle = spot_obj.GetComponent<state_chg>().Type;
-    //                                     //     if (_plrInventory.Contains(type_obstacle) && type_obstacle >1 && type_obstacle < 6)
-    //                                     //     {
-    //                                     //         AudioSource.PlayClipAtPoint(audioClips[4], spot_obj.GetComponent<Transform>().localPosition);
-    //                                     //         inventory.Remove(type_obstacle + 1);
-    //                                     //         //StartCoroutine(playOpenDoorAnimation(spot_obj));
-    //                                     //         return;
-    //                                     //     }
-    //                                     //     if (spot_obj.GetComponent<state_chg>().Crossing)
-    //                                     //     {
-    //                                     //         if (nextTileObj != null)
-    //                                     //         {
-    //                                     //             if (nextTileObj.tag != "obstacle")
-    //                                     //             {
-    //                                     //                 return;
-    //                                     //             }
-    //                                     //             else
-    //                                     //             {
-    //                                     //                 if ((int) nextTileObj.GetComponent<state_chg>().Type >= 2 || nextTileObj.GetComponent<state_chg>().Crossing)
-    //                                     //                 {
-    //                                     //                     return;
-    //                                     //                 }
-    //                                     //             }
-    //                                     //         }
-    //                                     //         //print(nextTileObj);
-    //                                     //         TileandObject tileAndObject = spot_obj.GetComponent<state_chg>().getTileandObjectBack();
-    //                                     //         tileAndObject.pushableObject.GetComponent<pushable_script>().SetProperties(_plrMoveDirection, true, tileAndObject.pushableTileLoc);
-    //                                     //         invokePushObject(tileAndObject.pushableObject);
-    //                                     //         _plrMoving = true;
-    //                                     //         _plrGridPosition += _plrMoveDirection;
-    //                                     //         spot_obj.GetComponent<state_chg>().Crossing = false;
-    //                                     //         spot_obj.GetComponent<state_chg>().storeTileandObject(new TileandObject(new Vector3Int(), null));
-    //                                     //         return;                                                
-                                                
-    //                                     //     }
-    //                                     //     else
-    //                                     //     {
-    //                                     //         if (!spot_obj.GetComponent<state_chg>().Crossable)
-    //                                     //         {
-    //                                     //             return;
-    //                                     //         }
-    //                                     //     }
-    //                                     //}
-    //                                     //else
-    //                                     //{
-                                            
-    //                                     //}
-    //                                     //if (type_obstacle >= 2 && type_obstacle <= 5 && inventory.Contains(type_obstacle + 1)) //key door of any color
-    //                                     //{
-                                            
-    //                                     //}
-    //                                 }
-    //                                 _plrMoving = true;
-    //                                 _plrGridPosition += _plrMoveDirection;
-    //                             }
-                                
-
-    //                             return;
-    //                         case "trap":
-    //                             if (spot_obj.GetComponent<trap_state>().TrapEnabled)
-    //                             {
-    //                                 //death sequence based on trap type
-    //                                 death_use = death_types[(int)spot_obj.GetComponent<trap_state>().Type];
-    //                                 plr_frame = death_use.x;
-    //                                 plr_death = true;
-    //                                 AudioSource.PlayClipAtPoint(audioClips[3], player.GetComponent<Transform>().localPosition);
-    //                             }
-    //                             else
-    //                             {
-    //                                 _plrMoving = true;
-    //                                 _plrGridPosition += _plrMoveDirection;
-    //                             }
-    //                             return;
-    //                         case "Finish":
-    //                             AudioSource.PlayClipAtPoint(audioClips[5], player.GetComponent<Transform>().localPosition);                                
-    //                             _plrMoving = true;
-    //                             _plrGridPosition += _plrMoveDirection;
-    //                             StartCoroutine(fadeToNextScene(SceneManager.GetActiveScene().buildIndex + 1, Time.realtimeSinceStartup));
-
-    //                             return;
-    //                         default:
-    //                             //print("unknown");
-    //                             _plrMoving = true;
-    //                             _plrGridPosition += _plrMoveDirection;
-    //                             return;
-
-    //                     }
-    //                 }
-                    
-    //             }
-    //         // }
-    //         // else if (_plrMoving)
-    //         // {
-    //             plr_timer1 += 1;
-    //             _plrPosition = UpdatePosition(player, _plrPosition + (Time.deltaTime * new Vector3(_plrMoveDirection.x, _plrMoveDirection.y, 0) * 2f));
-    //             if (spot_obj != null)
-    //             {
-    //                 if (spot_obj.CompareTag("obstacle") && (_plrPosition - spot_obj.GetComponent<Transform>().localPosition).magnitude > 0.5 && (int) spot_obj.GetComponent<state_chg>().Type == 1)
-    //                 {
-    //                     spot_obj.GetComponent<state_chg>().Crossing = false;
-    //                     GameObject[] objects = GameObject.FindGameObjectsWithTag("trap");
-    //                     foreach (GameObject obj in objects)
-    //                     {
-    //                         if ((obj.GetComponent<trap_state>().Type == spot_obj.GetComponent<state_chg>().Type) && (!spot_obj.GetComponent<state_chg>().State))
-    //                         {
-    //                             obj.GetComponent<trap_state>().TrapEnabled = true;
-    //                         }
-    //                     }
-    //                 }
-    //                 else if (spot_obj.CompareTag("obstacle") && (_plrPosition - spot_obj.GetComponent<Transform>().localPosition).magnitude <= 0.5 && (int) spot_obj.GetComponent<state_chg>().Type == 1)
-    //                 {
-    //                     spot_obj.GetComponent<state_chg>().Crossing = true;
-    //                     GameObject[] objects = GameObject.FindGameObjectsWithTag("trap");
-    //                     foreach (GameObject obj in objects)
-    //                     {
-    //                         if ((obj.GetComponent<trap_state>().Type == spot_obj.GetComponent<state_chg>().Type) && (!spot_obj.GetComponent<state_chg>().State))
-    //                         {
-    //                             obj.GetComponent<trap_state>().TrapEnabled = false;
-    //                         }
-    //                     }
-    //                 }
-    //             }
-    //             //print((_plrPosition - (_plrGridPosition + new Vector3(0.5f, 0.5f, 0))).magnitude);
-    //             if ((_plrPosition - (_plrGridPosition + new Vector3(0.5f, 0.5f, 0))).magnitude <= 0.05)
-    //             {
-    //                 _plrPosition = UpdatePosition(player, _plrGridPosition + new Vector3(0.5f, 0.5f, 0));
-    //                 plr_timer1 = 0;
-    //                 _plrMoving = false;
-    //             }
-    //             else
-    //             {
-
-    //                 if (plr_timer1 > 15)
-    //                 {
-    //                     plr_timer1 = 0;
-    //                     plr_frame += 1;
-    //                     switch (plr_state)
-    //                     {
-    //                         case 1:
-    //                             if (plr_frame >= plr_walksprites.Length)
-    //                             {
-    //                                 plr_frame = 0;
-    //                             }
-    //                             updateSprite(player, plr_walksprites[plr_frame], new Vector3(0, 0, _plrFacingDirection - 90));
-    //                             return;
-    //                         case 2:
-    //                             if (plr_frame >= plr_bombsprites.Length)
-    //                             {
-    //                                 plr_frame = 0;
-    //                             }
-    //                             updateSprite(player, plr_bombsprites[plr_frame], new Vector3(0, 0, _plrFacingDirection - 90));
-    //                             return;
-    //                         case 3:
-    //                             if (plr_frame >= (plr_torchsprites.Length - 18))
-    //                             {
-    //                                 plr_frame = 0;
-    //                             }
-    //                             updateSprite(player, plr_torchsprites[plr_frame], new Vector3(0, 0, _plrFacingDirection - 90));
-    //                             return;
-    //                     }
-    //                 }
-    //             }
-    //         // }
-    //         // else if (!_plrMoving)
-    //         // {
-
-    //         //     switch (plr_state)
-    //         //     {
-    //         //         case 1:
-    //         //             updateSprite(player, plr_walksprites[1], new Vector3(0, 0, _plrFacingDirection - 90));
-    //         //             return;
-    //         //         case 2:
-    //         //             updateSprite(player, plr_bombsprites[1], new Vector3(0, 0, _plrFacingDirection - 90));
-    //         //             return;
-    //         //         case 3:
-    //         //             updateSprite(player, plr_torchsprites[1], new Vector3(0, 0, _plrFacingDirection - 90));
-    //         //             return;
-    //         //     }
-
-
-    //         // };
     }
 
 }

@@ -68,6 +68,7 @@ public class TrapHandle : MonoBehaviour, ITrapState, IStateChange<TrapType, Trap
         bool _kill = false;
         GameObject tmp_pushable;
         PushableHandle tmp_pushableHandle;
+        Debug.Log(_state);
         switch(_state)
         {
             case TrapState.Crossing:
@@ -77,16 +78,12 @@ public class TrapHandle : MonoBehaviour, ITrapState, IStateChange<TrapType, Trap
                     case "enemy":
                         _move = false;
                         break;
-                    case "Player":
-                        tmp_pushable = _mainControl.GetInstantiatedOverlappingObject(_gridPos);
+                    case "player":
+                        tmp_pushable = _mainControl.GetInstantiatedObject(_gridPos, TilemapUse.Moveables);
                         tmp_pushableHandle = tmp_pushable.GetComponent<PushableHandle>();
-                        tmp_pushableHandle.CrossingExit = true;
                         _move = tmp_pushableHandle.TestPush(_moveDirection);
-                        if (!_move)
-                        {
-                            tmp_pushableHandle.CrossingExit = false;
-                        }
-                        else
+                        Debug.Log(_move);
+                        if (_move)
                         {
                             _state = _trapStateIndex == 0 ? TrapState.Idle : TrapState.Set;
                         }
@@ -147,7 +144,6 @@ public class TrapHandle : MonoBehaviour, ITrapState, IStateChange<TrapType, Trap
                 PushableHandle tmp_handle = _pushable.GetComponent<PushableHandle>();
                 if ((tmp_handle.GetPosition() - _currentTransform.localPosition).magnitude <= 0.15)
                 {
-                    tmp_handle.CrossingEnter = true;
                     _state = TrapState.Crossing;
                 }
                 break;

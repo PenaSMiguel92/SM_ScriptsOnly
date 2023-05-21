@@ -1,7 +1,7 @@
 using System;
 using UnityEngine;
 
-public enum PickUpEnum { Coin, CoinChest, RedKey, BlueKey, YellowKey, GreenKey, Bomb, Torch }
+public enum PickUpEnum { Coin, CoinChest, RedKey, BlueKey, YellowKey, GreenKey, Bomb, Torch, None }
 public enum PickUpState {Loading, Idle, PickedUp}
 public interface IPickupType
 {

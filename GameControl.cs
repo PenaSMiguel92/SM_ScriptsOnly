@@ -6,22 +6,18 @@ using UnityEngine.Tilemaps;
 using UnityEngine.SceneManagement;
 
 public enum GameState {Loading, Cutscene, Menu, Pause, LevelPlay, LevelEnd}
-public enum DeathType { Standard, Burn, Electricution, Acid };
+public enum DeathType { Standard, Burn, Electricution, Acid }
+public enum TilemapUse { Foreground, Moveables, Enemies }
 public interface IGameControl
 {
     public GameState State { get; }
-    public Tilemap Foreground { get; }
-    public Tilemap Overlap { get; }
 
     public Vector3Int GetGridPosition(Vector3 _position);
-    public GameObject GetInstantiatedObject(Vector3Int _location);
-    public void SetTile(Vector3Int _location, TileBase _tile);
-    public TileBase GetTile(Vector3Int _location);
-    public bool HasTile(Vector3Int _location);
-    public void MoveTile(Vector3Int _currentLocation, Vector3Int _nextLocation);
-    public void StoreTile(Vector3Int _currentLocation, Vector3Int _nextLocation);
-    public GameObject GetInstantiatedOverlappingObject(Vector3Int _currentLocation);
-    public void RestoreTile(Vector3Int _currentLocation, Vector3Int _nextLocation);
+    public GameObject GetInstantiatedObject(Vector3Int _location, TilemapUse _tilemapUse);
+    public void SetTile(Vector3Int _location, TileBase _tile, TilemapUse _tilemapUse);
+    public TileBase GetTile(Vector3Int _location, TilemapUse _tilemapUse);
+    public bool HasTile(Vector3Int _location, TilemapUse _tilemapUse);
+    public void MoveTile(Vector3Int _currentLocation, Vector3Int _nextLocation, TilemapUse _tilemapUse);
     public void FinishLevel();
     public void InvokeTrapStateChange(bool _state);
 }
@@ -37,17 +33,13 @@ public class ITrapStateChange : EventArgs
 
 public class GameControl : MonoBehaviour, IGameControl
 {
-    [SerializeField] private GameObject _foregroundObject;
-    [SerializeField] private GameObject _overlapObject;
+    [SerializeField] private Tilemap _foregroundTilemap;
+    [SerializeField] private Tilemap _moveablesTilemap;
+    [SerializeField] private Tilemap _enemiesTilemap;
+    [SerializeField] private Tilemap _playersTilemap;
     public static GameControl Main;
     private AudioManager _audioManager;
     private Player _currentPlayer;
-
-    private Tilemap _foreground;
-    public Tilemap Foreground {get { return _foreground; } }
-
-    private Tilemap _overlap;
-    public Tilemap Overlap {get { return _overlap; } }
     private GameState _state = GameState.Loading;
     public GameState State {get { return _state; } }
 
@@ -67,110 +59,117 @@ public class GameControl : MonoBehaviour, IGameControl
         _audioManager = AudioManager.Main;
         _currentPlayer = Player.Main;
         _currentPlayer.onPlayerDeath += RestartLevel;
-        _foreground = _foregroundObject.GetComponent<Tilemap>();
-        _overlap = _overlapObject.GetComponent<Tilemap>();
-        _foregroundObject.GetComponent<TilemapRenderer>().forceRenderingOff = true;
-        _overlapObject.GetComponent<TilemapRenderer>().forceRenderingOff = true;
-        SetPushableObjects();
+        _foregroundTilemap.GetComponent<TilemapRenderer>().forceRenderingOff = true;
+        _moveablesTilemap.GetComponent<TilemapRenderer>().forceRenderingOff = true;
+        _enemiesTilemap.GetComponent<TilemapRenderer>().forceRenderingOff = true;
+        _playersTilemap.GetComponent<TilemapRenderer>().forceRenderingOff = true;
         StartCoroutine(FadeInfromLastScene(Time.realtimeSinceStartup));
-    }
-
-    void SetPushableObjects()
-    {
-        IPushable[] pushableObjects = GetComponents<IPushable>();
-        int tracker = 1;
-        foreach (IPushable push_obj in pushableObjects)
-        {
-            push_obj.IdUse = tracker;
-            tracker += 1;
-        }
     }
 
     public Vector3Int GetGridPosition(Vector3 _position)
     {
-        return _foreground.LocalToCell(_position);
+        return _foregroundTilemap.LocalToCell(_position);
     }
 
-    public GameObject GetInstantiatedObject(Vector3Int _location)
+    public GameObject GetInstantiatedObject(Vector3Int _location, TilemapUse _tilemapUse)
     {
-        return _foreground.GetInstantiatedObject(_location);
+        GameObject tmp_instantiatedObject = null;
+        switch(_tilemapUse)
+        {
+            case TilemapUse.Foreground:
+                tmp_instantiatedObject = _foregroundTilemap.GetInstantiatedObject(_location);
+                break;
+            case TilemapUse.Moveables:
+                tmp_instantiatedObject = _moveablesTilemap.GetInstantiatedObject(_location);
+                break;
+            case TilemapUse.Enemies:
+                tmp_instantiatedObject = _enemiesTilemap.GetInstantiatedObject(_location);
+                break;
+
+        }
+        return tmp_instantiatedObject;
     }
 
-    public void SetTile(Vector3Int _location, TileBase _tile)
+    public void SetTile(Vector3Int _location, TileBase _tile, TilemapUse _tilemapUse)
     {
-        _foreground.SetTile(_location, _tile);
+        switch(_tilemapUse)
+        {
+            case TilemapUse.Foreground:
+                _foregroundTilemap.SetTile(_location, _tile);
+                break;
+            case TilemapUse.Moveables:
+                _moveablesTilemap.SetTile(_location, _tile);
+                break;
+            case TilemapUse.Enemies:
+                _enemiesTilemap.SetTile(_location, _tile);
+                break;
+        }
+        
     }
-    public TileBase GetTile(Vector3Int _location)
+    public TileBase GetTile(Vector3Int _location, TilemapUse _tilemapUse)
     {
-        return _foreground.GetTile(_location);
+        TileBase tmp_tile = null;
+        switch(_tilemapUse)
+        {
+            case TilemapUse.Foreground:
+                tmp_tile = _foregroundTilemap.GetTile(_location);
+                break;
+            case TilemapUse.Moveables:
+                tmp_tile = _moveablesTilemap.GetTile(_location);
+                break;
+            case TilemapUse.Enemies:
+                tmp_tile = _enemiesTilemap.GetTile(_location);
+                break;
+        }
+        return tmp_tile;
     }
-    public bool HasTile(Vector3Int _location)
+    public bool HasTile(Vector3Int _location, TilemapUse _tilemapUse)
     {
-        return _foreground.HasTile(_location);
+        bool _hasTile = false;
+        switch(_tilemapUse)
+        {
+            case TilemapUse.Foreground:
+                _hasTile = _foregroundTilemap.HasTile(_location);
+                break;
+            case TilemapUse.Moveables:
+                _hasTile = _moveablesTilemap.HasTile(_location);
+                break;
+            case TilemapUse.Enemies:
+                _hasTile = _enemiesTilemap.HasTile(_location);
+                break;
+
+        }
+        
+        return _hasTile;
     }
-    public void MoveTile(Vector3Int _currentLocation, Vector3Int _nextLocation)
+    public void MoveTile(Vector3Int _currentLocation, Vector3Int _nextLocation, TilemapUse _tilemapUse)
     {
-        TileBase targetTile = _foreground.GetTile(_currentLocation);
-        _foreground.SetTile(_nextLocation, targetTile);
-        _foreground.SetTile(_currentLocation, null);
-    }
-    public void StoreTile(Vector3Int _currentLocation, Vector3Int _nextLocation)
-    {
-        TileBase targetTile = _foreground.GetTile(_currentLocation);
-        _overlap.SetTile(_nextLocation, targetTile);
-        // TileBase targetTile = _foreground.GetTile(_currentLocation);
-        // GameObject storageObject = _foreground.GetInstantiatedObject(_nextLocation);
-        // switch(storageObject.tag)
-        // {
-        //     case "trap":
-        //         TrapHandle tmp_traphandle = storageObject.GetComponent<TrapHandle>();
-        //         tmp_traphandle.StoreTile();
-        //         break;
-        //     case "switch":
-        //         TrapSwitchHandle tmp_trapswitchhandle = storageObject.GetComponent<TrapSwitchHandle>();
-        //         tmp_trapswitchhandle.StoreTile();
-        //         break;
-        // }
-        _foreground.SetTile(_currentLocation, null);
-    }
-    public GameObject GetInstantiatedOverlappingObject(Vector3Int _currentLocation)
-    {
-        return _overlap.GetInstantiatedObject(_currentLocation);
-    }
-    public void RestoreTile(Vector3Int _currentLocation, Vector3Int _nextLocation)
-    {
-        TileBase targetTile = _overlap.GetTile(_currentLocation);
-        _foreground.SetTile(_nextLocation, targetTile);
-        _overlap.SetTile(_currentLocation, null);
+        TileBase tmp_targetTile;
+        switch(_tilemapUse)
+        {
+            case TilemapUse.Foreground:
+                tmp_targetTile = _foregroundTilemap.GetTile(_currentLocation);
+                _foregroundTilemap.SetTile(_nextLocation, tmp_targetTile);
+                _foregroundTilemap.SetTile(_currentLocation, null);
+                break;
+            case TilemapUse.Moveables:
+                tmp_targetTile = _moveablesTilemap.GetTile(_currentLocation);
+                _moveablesTilemap.SetTile(_nextLocation, tmp_targetTile);
+                _moveablesTilemap.SetTile(_currentLocation, null);
+                break;
+            case TilemapUse.Enemies:
+                tmp_targetTile = _enemiesTilemap.GetTile(_currentLocation);
+                _enemiesTilemap.SetTile(_nextLocation, tmp_targetTile);
+                _enemiesTilemap.SetTile(_currentLocation, null);
+                break;
+        }
+       
     }
     public void FinishLevel()
     {
         _audioManager.PlaySound(SoundType.PassLevel, _currentPlayer.GetPosition());
         StartCoroutine(FadeToNextScene(SceneManager.GetActiveScene().buildIndex + 1, Time.realtimeSinceStartup));
     }
-    // int Direction2Deg(float y, float x)
-    // {
-    //     float degrees = Mathf.Rad2Deg * Mathf.Atan2(y,x);
-    //     int result = Mathf.RoundToInt(180f-degrees);
-
-    //     return result;
-    // }
-
-    // Vector3 updatePosition(GameObject obj,Vector3 dir)
-    // {
-    //     Transform obj_transform = obj.GetComponent<Transform>();
-    //     obj_transform.localPosition = dir;
-    //     return obj_transform.localPosition;
-    // }
-    // void updateSprite(GameObject obj, Sprite sprite, Vector3 rotation)
-    // {
-    //     obj.GetComponent<Transform>().localEulerAngles = rotation;
-    //     SpriteRenderer sp_rend  = obj.GetComponent<SpriteRenderer>();
-    //     sp_rend.sprite = sprite;
-    //     return;
-    // }
-    
-
     IEnumerator FadeInfromLastScene(double startTime)
     {
         bool endAnim = false;
@@ -220,6 +219,4 @@ public class GameControl : MonoBehaviour, IGameControl
     {
         onTrapStateChange?.Invoke(this, new ITrapStateChange(_state));
     }
-
-    //}
 }
