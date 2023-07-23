@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Tilemaps;
 
-public enum TrapType { Hole, ElectricalBox}
+public enum TrapType { Hole, ElectricalBox, BudaStatue}
 public enum TrapState {Loading, Idle, Waiting, Crossing, Set, PlayerStand} 
 public interface ITrapState
 {
@@ -74,10 +74,7 @@ public class TrapHandle : MonoBehaviour, ITrapState, IStateChange<TrapType, Trap
             case TrapState.Crossing:
                 _kill = _trapStateIndex == 0 ? true : false;
                 switch(_invokingObject.tag)
-                {
-                    case "enemy":
-                        _move = false;
-                        break;
+                {       
                     case "player":
                         tmp_pushable = _mainControl.GetInstantiatedObject(_gridPos, TilemapUse.Moveables);
                         tmp_pushableHandle = tmp_pushable.GetComponent<PushableHandle>();
@@ -88,6 +85,9 @@ public class TrapHandle : MonoBehaviour, ITrapState, IStateChange<TrapType, Trap
                             _state = _trapStateIndex == 0 ? TrapState.Idle : TrapState.Set;
                         }
                         break;
+                    default:
+                        _move = false;
+                        break;
                 }
                 break;
             case TrapState.Set:
@@ -97,6 +97,7 @@ public class TrapHandle : MonoBehaviour, ITrapState, IStateChange<TrapType, Trap
             case TrapState.Idle:
                 _kill = true;
                 _move = false;
+                if (_invokingObject.tag == "bomb") _move = true;
                 break;
                 
         }

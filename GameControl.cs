@@ -64,6 +64,7 @@ public class GameControl : MonoBehaviour, IGameControl
         _enemiesTilemap.GetComponent<TilemapRenderer>().forceRenderingOff = true;
         _playersTilemap.GetComponent<TilemapRenderer>().forceRenderingOff = true;
         StartCoroutine(FadeInfromLastScene(Time.realtimeSinceStartup));
+        Application.targetFrameRate = 60;
     }
 
     public Vector3Int GetGridPosition(Vector3 _position)

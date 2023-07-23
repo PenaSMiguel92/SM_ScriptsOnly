@@ -11,7 +11,7 @@ public class ExplosionHandle : MonoBehaviour
     private Transform _curTransform;
     private SpriteRenderer _curSpriteRenderer;
     private int _curFrame;
-    private const int _FRAMERATE = 8;
+    private const int _FRAMERATE = 2;
     public event EventHandler onAnimationEnd;
     // Start is called before the first frame update
     void Start()

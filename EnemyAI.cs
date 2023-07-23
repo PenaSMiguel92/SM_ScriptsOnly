@@ -35,7 +35,8 @@ public class EnemyAI : MonoBehaviour, IEnemyAI
     private int _enemyFacingDirection;
     private Vector3Int _enemyMoveDirection;
     private float _enemyMoveT;
-    private int _ENEMYFRAMERATE = 20;
+    private Vector3 _gridOffset = new Vector3(0.5f, 0.5f, 0);
+    private int _ENEMYFRAMERATE = 2;
     private float[] _enemyMoveSpeeds = { 2f, 3f, 4f }; //Guard, Gatherer, Ninja
     private float _enemyMoveSpeed = 2f;
     private int _enemyLastFrame;
@@ -155,10 +156,10 @@ public class EnemyAI : MonoBehaviour, IEnemyAI
     void UpdateEnemyMovement()
     {
         _enemyMoveT = Mathf.Min(1, _enemyMoveT + Time.deltaTime * _enemyMoveSpeed);
-        UpdatePosition(Vector3.Lerp(_enemyPosition, _enemyGridPosition + new Vector3(0.5f, 0.5f, 0), _enemyMoveT));
+        UpdatePosition(Vector3.Lerp(_enemyPosition, _enemyGridPosition + _gridOffset, _enemyMoveT));
         if (_enemyMoveT == 1)
         {
-            _enemyPosition = UpdatePosition(_enemyGridPosition + new Vector3(0.5f, 0.5f, 0));
+            _enemyPosition = UpdatePosition(_enemyGridPosition + _gridOffset);
             _enemyMoveT = 0;
             if (_enemyAnimation != null) StopCoroutine(_enemyAnimation);
             _enemyState = EnemyState.Idle;

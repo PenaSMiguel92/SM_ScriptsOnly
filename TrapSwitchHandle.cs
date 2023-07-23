@@ -84,6 +84,9 @@ public class TrapSwitchHandle : MonoBehaviour, IStateChange<TrapType, TrapState>
                     }
                 }
                 break;
+            case "bomb":
+                _proceed = _state == TrapState.Set;
+                break;
             default:
                 tmp_pushableHandle = _invokingObject.GetComponent<PushableHandle>();
                 if (_state != TrapState.Set && tmp_pushableHandle.Type != _type) return false; //if not set (state), thus not crossable, and not the same type, then prevent movement.

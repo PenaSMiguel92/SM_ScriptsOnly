@@ -26,7 +26,7 @@ public class DoorHandle : MonoBehaviour, IStateChange<DoorType, DoorState>
     private AudioManager _audioManager;
     
     private int _curFrame;
-    private const int _FRAMERATE = 8;
+    private const int _FRAMERATE = 2;
     public event EventHandler onAnimationEnd;
 
     private int bw_currentStep = 0; //bw = breakable wall variables

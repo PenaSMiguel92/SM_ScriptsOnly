@@ -38,6 +38,7 @@ public class Player : MonoBehaviour, IPlayer
     [SerializeField] private GameObject _droppedBomb;
 
     private Sprite[] _plrCurrentSprites;
+    private Vector3 _gridOffset = new Vector3(0.5f, 0.5f, 0);
     private int _plrScore;
     public int Score {get { return _plrScore; } }
     private PlayerState _plrState = PlayerState.Loading;
@@ -54,7 +55,7 @@ public class Player : MonoBehaviour, IPlayer
     private Vector3Int _plrMoveDirection;
     private float _plrMoveT;
     private int _plrFacingDirection; //direction, player is facing in angle;
-    private const int _PLRFRAMERATE = 8;
+    private const int _PLRFRAMERATE = 2;
     private float _plrMoveSpeed = 4f;
     private int _plrLastFrame; //animation frame.
     private IEnumerator _plrAnimation;
@@ -158,10 +159,13 @@ public class Player : MonoBehaviour, IPlayer
     void OnPlayerInteract(object _sender, EventArgs _e)
     {
         if (_plrState == PlayerState.Death) return;
+        if (_plrState != PlayerState.Idle) return;
+        
         switch(_plrCurrentSelection)
         {
             case PickUpEnum.Bomb:
-                GameObject _bombObj = Instantiate(_droppedBomb, _plrPosition += _plrMoveDirection, Quaternion.Euler(0, 0, 0));
+                Vector3 tmp_placeLocation = _plrGridPosition + _gridOffset + new Vector3Int(Mathf.RoundToInt(Mathf.Cos(Mathf.Deg2Rad * _plrFacingDirection)), Mathf.RoundToInt(Mathf.Sin(Mathf.Deg2Rad * _plrFacingDirection)), 0);
+                GameObject _bombObj = Instantiate(_droppedBomb, tmp_placeLocation, Quaternion.Euler(0, 0, 0));
                 _bombObj.GetComponent<BombHandle>().SpawnTime = Time.realtimeSinceStartup;
                 int _bombIndex = _plrInventory.IndexOf(PickUpEnum.Bomb);
                 _plrInventory.RemoveAt(_bombIndex);
@@ -185,7 +189,7 @@ public class Player : MonoBehaviour, IPlayer
                     _proceed = true;
                     break;
                 case "push":
-                    _proceed = tmp_spot_obj.GetComponent<PushableHandle>().TestPush(_moveDirection);
+                    _proceed = tmp_spot_obj.GetComponent<IPushable>().TestPush(_moveDirection);
                     break;
                 case "door":
                     _proceed = tmp_spot_obj.GetComponent<DoorHandle>().TestDoor(_plrInventory);
@@ -220,7 +224,6 @@ public class Player : MonoBehaviour, IPlayer
         {
             _plrMoveDirection = _moveDirection;
             _plrGridPosition += _plrMoveDirection;
-            _plrMoveT = 0f;
             if (_plrAnimation != null) StopCoroutine(_plrAnimation);
             _plrAnimation = PlayAnimation(true);
             StartCoroutine(_plrAnimation);
@@ -232,15 +235,10 @@ public class Player : MonoBehaviour, IPlayer
     {
         if (_plrState == PlayerState.Death) return;
         if (_plrState != PlayerState.Idle) return;
-        if (_e.PlayerDirection.magnitude > 1)
-        {
-            return;
-        }
-        else
-        {
-            _plrInputDirection = _e.PlayerDirection.normalized; //Only up, right, left or down allowed. 
-        }
-        _plrFacingDirection = Direction2Deg(_plrInputDirection.y, -_plrInputDirection.x);
+        if (_e.PlayerDirection.magnitude > 1) return;
+        if (_e.PlayerDirection.magnitude < 0.5) return;
+        _plrInputDirection = _e.PlayerDirection; //Only up, right, left or down allowed. 
+        _plrFacingDirection = Direction2Deg(_plrInputDirection.y, _plrInputDirection.x);
         Vector3Int tmp_plrMoveDirection = new Vector3Int(Mathf.RoundToInt(Mathf.Cos(Mathf.Deg2Rad * _plrFacingDirection)), Mathf.RoundToInt(Mathf.Sin(Mathf.Deg2Rad * _plrFacingDirection)), 0);
         Vector3Int tmp_testingLocation = _plrGridPosition + tmp_plrMoveDirection;
         TestNextLocation(tmp_testingLocation, tmp_plrMoveDirection);
@@ -249,7 +247,7 @@ public class Player : MonoBehaviour, IPlayer
     int Direction2Deg(float y, float x)
     {
         float degrees = Mathf.Rad2Deg * Mathf.Atan2(y,x);
-        int result = Mathf.RoundToInt(180f-degrees);
+        int result = Mathf.RoundToInt(degrees);
 
         return result;
     }
@@ -375,7 +373,6 @@ public class Player : MonoBehaviour, IPlayer
         {
             _plrMoveDirection = _moveDirection;
             _plrGridPosition += _plrMoveDirection;
-            _plrMoveT = 0f;
             if (_plrAnimation != null) StopCoroutine(_plrAnimation);
             _plrMoveSpeed = _speed;
             _plrState = PlayerState.Sliding;
@@ -387,7 +384,7 @@ public class Player : MonoBehaviour, IPlayer
         if (_plrState == PlayerState.Death) return;
         if (_plrState != PlayerState.Idle) return;
         
-        _plrFacingDirection = Direction2Deg(_direction.y, -_direction.x);
+        _plrFacingDirection = Direction2Deg(_direction.y, _direction.x);
         Vector3Int tmp_plrMoveDirection = new Vector3Int(Mathf.RoundToInt(Mathf.Cos(Mathf.Deg2Rad * _plrFacingDirection)), Mathf.RoundToInt(Mathf.Sin(Mathf.Deg2Rad * _plrFacingDirection)), 0);
         Vector3Int tmp_testingLocation = _plrGridPosition + tmp_plrMoveDirection;
         TestNextForcedLocation(tmp_testingLocation, tmp_plrMoveDirection, _speed);
@@ -396,10 +393,11 @@ public class Player : MonoBehaviour, IPlayer
     void PlayerLerpMove()
     {
         _plrMoveT = Mathf.Min(1, _plrMoveT + (Time.deltaTime*_plrMoveSpeed));
-        UpdatePosition(Vector3.Lerp(_plrPosition, _plrGridPosition + new Vector3(0.5f, 0.5f, 0), _plrMoveT)); 
+        UpdatePosition(Vector3.Lerp(_plrPosition, _plrGridPosition + _gridOffset, _plrMoveT)); 
         if (_plrMoveT == 1)
         {
-            _plrPosition = UpdatePosition( _plrGridPosition + new Vector3(0.5f, 0.5f, 0));
+            _plrMoveT = 0f;
+            _plrPosition = UpdatePosition( _plrGridPosition + _gridOffset);
             _plrState = PlayerState.Idle;
         }
     }
@@ -408,11 +406,11 @@ public class Player : MonoBehaviour, IPlayer
     {
         if (_plrState == PlayerState.Loading) return;
         if (_plrState == PlayerState.Death) return;
+        SetWalkToSelectedInventory();
         switch (_plrState)
         {
             case PlayerState.Idle:
                 if (_plrAnimation != null) StopCoroutine(_plrAnimation);
-                SetWalkToSelectedInventory();
                 UpdateSprite(_plrCurrentSprites[0], new Vector3(0, 0, _plrFacingDirection - 90));
                 break;
             case PlayerState.Walking:

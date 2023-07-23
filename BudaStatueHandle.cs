@@ -4,19 +4,12 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Tilemaps;
 
-public enum PushState {Loading, Idle, Moving, Crossing, Set}
-public interface IPushable
-{
-    public PushState State { get; set; }
-    public Vector3Int MoveDirection { get; }
-    public Vector3Int TileLocation { get; }
-    public bool TestPush(Vector3Int _plrMoveDirection);
-    public bool ForcePush(Vector3Int _moveDirection, float _speed);
-    public Vector3 GetPosition();
-}
-public class PushableHandle : MonoBehaviour, IPushable, IStateChange<TrapType, PushState>
+public enum ShootDirection { Up, Right, Down, Left };
+public class BudaStatueHandle : MonoBehaviour, IPushable, IStateChange<TrapType, PushState>
 {
     [SerializeField] TrapType _type;
+    [SerializeField] ShootDirection _shootDir;
+    [SerializeField] Sprite[] _sprites;
     bool _crossingExit = false;
     bool _crossingEnter = false;
     bool _crossingMoving = false;
@@ -34,7 +27,10 @@ public class PushableHandle : MonoBehaviour, IPushable, IStateChange<TrapType, P
 
     GameControl _mainControl;
     AudioManager _audioManager;
-
+    SpriteRenderer _curSpriteRenderer;
+    int _curFrame;
+    const int _FRAMERATE = 2;
+    //public event EventHandler onAnimationEnd;
     public TrapType Type { get { return _type; } }
     public bool CrossingExit {get { return _crossingExit; } set { _crossingExit = value; } }
     public bool CrossingEnter {get { return _crossingEnter; } set { _crossingEnter = value; } }
@@ -48,6 +44,7 @@ public class PushableHandle : MonoBehaviour, IPushable, IStateChange<TrapType, P
         _mainControl = GameControl.Main;
         _audioManager = AudioManager.Main;
         _currentTransform = gameObject.GetComponent<Transform>();
+        _curSpriteRenderer = gameObject.GetComponent<SpriteRenderer>();
         _mainControl.onGameStart += OnGameStart;
         if (_mainControl.State == GameState.LevelPlay)
         {
@@ -61,7 +58,44 @@ public class PushableHandle : MonoBehaviour, IPushable, IStateChange<TrapType, P
         _gridPos = _mainControl.GetGridPosition(_positionTrack);
         _state = PushState.Idle;
     }
-    
+    void UpdateSprite( Sprite sprite, Vector3 rotation)
+    {
+        _currentTransform.localEulerAngles = rotation;
+        _curSpriteRenderer.sprite = sprite;
+        return;
+    }
+    IEnumerator PlayAnimation(bool _loop)
+    {
+        bool end_anim = false;
+        const int FRAME_RATE = _FRAMERATE; //how many frames per animation frame.
+        int cur_frame = (_curFrame>_sprites.Length - 1) ? 0 : _curFrame;
+        int timer1 = 0;
+        while (!end_anim)
+        {
+            timer1 += 1;
+            if (timer1 > FRAME_RATE)
+            {
+                timer1 = 0;
+
+
+                cur_frame += 1;
+                //cur_frame = cur_frame > (_plrCurrentSprites.Length - 1) ? _plrCurrentSprites.Length-1 : cur_frame;
+                if (cur_frame > _sprites.Length - 1)
+                {
+                    cur_frame = 0;
+                    if (!_loop)
+                    {
+                        break;
+                    }
+                }
+
+            }
+            _curFrame = cur_frame;
+            UpdateSprite( _sprites[cur_frame], new Vector3(0, 0, 0));
+            yield return new WaitForEndOfFrame();
+        }
+        //onAnimationEnd?.Invoke(this, EventArgs.Empty);
+    }
     public Vector3 GetPosition()
     {
         return _currentTransform.localPosition;

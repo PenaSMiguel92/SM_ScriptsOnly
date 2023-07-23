@@ -37,7 +37,7 @@ public class Input : MonoBehaviour
     private Vector2 _playerDirection;
 
     public event EventHandler<InputValues> onPlayerWalk;
-    public event EventHandler<InputValues> onPlayerIdle;
+    //public event EventHandler<InputValues> onPlayerIdle;
     public event EventHandler onPlayerInteract;
     public event EventHandler<InventorySelect> onPlayerInventorySelect;
 
@@ -50,6 +50,7 @@ public class Input : MonoBehaviour
     {
         playerInputActions = new PlayerInputActions();
         playerInputActions.Player.Enable();
+        //playerInputActions.Player.Walk.performed += OnPlayerWalk;
         playerInputActions.Player.Interact.performed += OnInteract;
         playerInputActions.Player.InventorySelectLeft.performed += OnInventorySelectLeft;
         playerInputActions.Player.InventorySelectRight.performed += OnInventorySelectRight;
@@ -58,13 +59,14 @@ public class Input : MonoBehaviour
     private void Update()
     {
         _playerDirection = playerInputActions.Player.Walk.ReadValue<Vector2>();
-        if (_playerDirection.magnitude > 0.1)
-        {
-            onPlayerWalk?.Invoke(this, new InputValues(_playerDirection));
-        } else {
-            onPlayerIdle?.Invoke(this, new InputValues(_playerDirection));
-        }
+        onPlayerWalk?.Invoke(this, new InputValues(_playerDirection));
     }
+
+    // private void OnPlayerWalk(InputAction.CallbackContext context)
+    // {
+    //     _playerDirection = context.action.ReadValue<Vector2>();
+    //     onPlayerWalk?.Invoke(this, new InputValues(_playerDirection));
+    // }
 
     private void OnInteract(InputAction.CallbackContext context)
     {

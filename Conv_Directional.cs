@@ -28,7 +28,7 @@ public class Conv_Directional : MonoBehaviour, IConveyor
     private Vector3Int _curGridPosition;
     private SpriteRenderer _curRenderer;
     private int _curFrame = 0;
-    private const int _FRAMERATE = 8;
+    private const int _FRAMERATE = 2;
     
     void Start()
     {
@@ -64,7 +64,7 @@ public class Conv_Directional : MonoBehaviour, IConveyor
         {
             GameObject tmp_spotObj = _mainControl.GetInstantiatedObject(_curGridPosition, TilemapUse.Moveables);
             if (tmp_spotObj == null) return;
-            PushableHandle tmp_pushableHandle = tmp_spotObj.GetComponent<PushableHandle>();
+            IPushable tmp_pushableHandle = tmp_spotObj.GetComponent<IPushable>();
             if (tmp_pushableHandle.State != PushState.Idle) return;
             tmp_pushableHandle.ForcePush(_moveDirection, _moveSpeed);
         }
