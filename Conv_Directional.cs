@@ -3,8 +3,8 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public enum ConvDir {Up, Down, Left, Right}
-public enum ConvState {Loading, Idle}
+
+
 public interface IConveyor
 {
     public Vector3Int Direction { get; }

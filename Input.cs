@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-public enum InventoryDirection {Left, Right}
+
 
 public class InputValues : EventArgs
 {

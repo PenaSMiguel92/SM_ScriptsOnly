@@ -3,8 +3,6 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-
-public enum PlayerState { Loading, Idle, Walking, Sliding, Death };
 public interface IPlayer 
 {
     public PlayerState State { get; }

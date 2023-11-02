@@ -3,8 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public enum SoundType {BigExplosion, Boomerang, Chest, Pickup, Death, DoorOpen, Explosion, Flame, Lightbeam, 
-                       SetPushable, NinjaSpin, PassLevel, PistolShot, Push, ShurikenThrow, ShurikenHit}
+
 
 public interface IAudioManager
 {

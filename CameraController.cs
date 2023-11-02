@@ -1,7 +1,7 @@
 using System;
 using UnityEngine;
 
-public enum CameraState { Loading, Following}
+
 public class CameraController : MonoBehaviour
 {
     public static CameraController Main;

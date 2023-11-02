@@ -5,9 +5,6 @@ using UnityEngine;
 using UnityEngine.Tilemaps;
 using UnityEngine.SceneManagement;
 
-public enum GameState {Loading, Cutscene, Menu, Pause, LevelPlay, LevelEnd}
-public enum DeathType { Standard, Burn, Electricution, Acid }
-public enum TilemapUse { Foreground, Moveables, Enemies }
 public interface IGameControl
 {
     public GameState State { get; }

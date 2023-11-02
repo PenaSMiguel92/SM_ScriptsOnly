@@ -3,7 +3,6 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public enum BombState { Idle, Waiting, Moving, Exploding, Exploded}
 public interface IBomb
 {
     public BombState State { get; }

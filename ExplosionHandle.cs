@@ -2,7 +2,6 @@ using System;
 using System.Collections;
 using UnityEngine;
 
-public enum ExplosionState {Searching, Done}
 public class ExplosionHandle : MonoBehaviour
 {
     [SerializeField] private Sprite[] _sprites;

@@ -4,9 +4,6 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Tilemaps;
 
-public enum EnemyType { Guard, Gatherer, Ninja, Mutant, Clone }
-public enum EnemyState { Loading, Idle, Walk, Attack, Follow, Sliding, Death }
-
 public interface IEnemyAI
 {
     public EnemyState State { get; }

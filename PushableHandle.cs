@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Tilemaps;
 
-public enum PushState {Loading, Idle, Moving, Crossing, Set}
 public interface IPushable
 {
     public PushState State { get; set; }

@@ -4,8 +4,8 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Tilemaps;
 
-public enum TrapType { Hole, ElectricalBox, BudaStatue}
-public enum TrapState {Loading, Idle, Waiting, Crossing, Set, PlayerStand} 
+
+
 public interface ITrapState
 {
     public DeathType DeathType { get; }
