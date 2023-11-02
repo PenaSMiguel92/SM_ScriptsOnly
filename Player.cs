@@ -9,7 +9,7 @@ public interface IPlayer
     public int Score { get; }
     public void Kill(DeathType _deathType);
     public void ForceMove(Vector3Int _direction, float _speed);
-    public void AddToInventory(PickUpEnum _pickup);
+    public void AddToInventory(PickUpType _pickup);
     public Vector3 GetPosition();
 }
 
@@ -60,10 +60,10 @@ public class Player : MonoBehaviour, IPlayer
     private double _plrTimerRT; //timer real time since event.
     private float _plrTimer1; //timing frames
     //gameplay variables
-    private List<PickUpEnum> _plrInventory = new List<PickUpEnum>();
-    private PickUpEnum _plrCurrentSelection = PickUpEnum.None;
+    private List<PickUpType> _plrInventory = new List<PickUpType>();
+    private PickUpType _plrCurrentSelection = PickUpType.None;
     //private string[] tools; //pickup bomb and torch, select which one is active.
-    private PickUpEnum _plrSelectedTool; //selected tool, index above.
+    private PickUpType _plrSelectedTool; //selected tool, index above.
     public static Player Main;
     public event EventHandler<EventDeath> onPlayerDeath;
     public event EventHandler onPlayerAnimationEnd;
@@ -124,13 +124,13 @@ public class Player : MonoBehaviour, IPlayer
     {
         switch(_plrCurrentSelection)
         {
-            case PickUpEnum.None:
+            case PickUpType.None:
                 _plrCurrentSprites = _plrWalk;
                 break;
-            case PickUpEnum.Bomb:
+            case PickUpType.Bomb:
                 _plrCurrentSprites = _plrBombWalk;
                 break;
-            case PickUpEnum.Torch:
+            case PickUpType.Torch:
                 _plrCurrentSprites = _plrTorchWalk;
                 break;
         }
@@ -138,7 +138,7 @@ public class Player : MonoBehaviour, IPlayer
     }
     void OnPlayerInventorySelect(object _sender, InventorySelect _e)
     {
-        List<PickUpEnum> tmp_selectables =  new List<PickUpEnum>{ PickUpEnum.None, PickUpEnum.Bomb, PickUpEnum.Torch };
+        List<PickUpType> tmp_selectables =  new List<PickUpType>{ PickUpType.None, PickUpType.Bomb, PickUpType.Torch };
         int _curIndex = tmp_selectables.IndexOf(_plrCurrentSelection);
         int _dir = _e.Direction == InventoryDirection.Left ? -1 : 1;
         Debug.Log(_curIndex);
@@ -150,7 +150,7 @@ public class Player : MonoBehaviour, IPlayer
             _curIndex = _curIndex < 0 ? tmp_selectables.Count - 1 : _curIndex;
             _curIndex = _curIndex >= tmp_selectables.Count ? 0 : _curIndex;
             if (_plrInventory.Contains(tmp_selectables[_curIndex])) break;
-            if (tmp_selectables[_curIndex] == PickUpEnum.None) break;
+            if (tmp_selectables[_curIndex] == PickUpType.None) break;
         }
         _plrCurrentSelection = tmp_selectables[_curIndex];
     }
@@ -161,13 +161,13 @@ public class Player : MonoBehaviour, IPlayer
         
         switch(_plrCurrentSelection)
         {
-            case PickUpEnum.Bomb:
+            case PickUpType.Bomb:
                 Vector3 tmp_placeLocation = _plrGridPosition + _gridOffset + new Vector3Int(Mathf.RoundToInt(Mathf.Cos(Mathf.Deg2Rad * _plrFacingDirection)), Mathf.RoundToInt(Mathf.Sin(Mathf.Deg2Rad * _plrFacingDirection)), 0);
                 GameObject _bombObj = Instantiate(_droppedBomb, tmp_placeLocation, Quaternion.Euler(0, 0, 0));
                 _bombObj.GetComponent<BombHandle>().SpawnTime = Time.realtimeSinceStartup;
-                int _bombIndex = _plrInventory.IndexOf(PickUpEnum.Bomb);
+                int _bombIndex = _plrInventory.IndexOf(PickUpType.Bomb);
                 _plrInventory.RemoveAt(_bombIndex);
-                _plrCurrentSelection = PickUpEnum.None;
+                _plrCurrentSelection = PickUpType.None;
                 break;
         }
 
@@ -295,23 +295,23 @@ public class Player : MonoBehaviour, IPlayer
         sp_rend.sprite = sprite;
         return;
     }
-    public void AddToInventory(PickUpEnum _pickup)
+    public void AddToInventory(PickUpType _pickup)
     {
         switch (_pickup)
         {
-            case PickUpEnum.Coin:
+            case PickUpType.Coin:
                 _plrScore += 100;
                 _audioManager.PlaySound(SoundType.Pickup, _plrPosition);
                 _mainControl.SetTile(_plrGridPosition, null, TilemapUse.Foreground);
                 break;
-            case PickUpEnum.CoinChest:
+            case PickUpType.CoinChest:
                 _plrScore += 500;
                 _audioManager.PlaySound(SoundType.Chest, _plrPosition);
                 _mainControl.SetTile(_plrGridPosition, null, TilemapUse.Foreground);
                 break;
             default:
                 _plrInventory.Add(_pickup);
-                if (_pickup == PickUpEnum.Bomb || _pickup == PickUpEnum.Torch)
+                if (_pickup == PickUpType.Bomb || _pickup == PickUpType.Torch)
                 {
                     _plrCurrentSelection = _pickup;
                 }

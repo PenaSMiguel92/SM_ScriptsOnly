@@ -3,7 +3,7 @@ public enum DeathType { Standard, Burn, Electricution, Acid }
 public enum SoundType {BigExplosion, Boomerang, Chest, Pickup, Death, DoorOpen, Explosion, Flame, Lightbeam, 
                        SetPushable, NinjaSpin, PassLevel, PistolShot, Push, ShurikenThrow, ShurikenHit}
 public enum EnemyType { Guard, Gatherer, Ninja, Mutant, Clone }
-public enum PickUpEnum { Coin, CoinChest, RedKey, BlueKey, YellowKey, GreenKey, Bomb, Torch, None }
+public enum PickUpType { Coin, CoinChest, RedKey, BlueKey, YellowKey, GreenKey, Bomb, Torch, None }
 public enum TrapType { Hole, ElectricalBox, BudaStatue}
 
 //States

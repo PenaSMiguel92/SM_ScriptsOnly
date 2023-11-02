@@ -3,18 +3,18 @@ using UnityEngine;
 
 public interface IPickupType
 {
-    public PickUpEnum TypeOfPickup { get; }
+    public PickUpType TypeOfPickup { get; }
     public PickUpState State { get; }
     public string Name { get; }
 }
 public class PickupHandle : MonoBehaviour, IPickupType
 {
 
-    [SerializeField] private PickUpEnum _typeOfPickup;
+    [SerializeField] private PickUpType _typeOfPickup;
     private string _nameOfObject;
     private string[] names = { "coin", "coin_chest", "key_pickup_0", "key_pickup_1", "key_pickup_2", "key_pickup_3", "bomb" };
 
-    public PickUpEnum TypeOfPickup { get { return _typeOfPickup; } }
+    public PickUpType TypeOfPickup { get { return _typeOfPickup; } }
 
     public string Name { get { return _nameOfObject; } }
     private PickUpState _state = PickUpState.Loading;
@@ -53,14 +53,14 @@ public class PickupHandle : MonoBehaviour, IPickupType
     // {
     //     switch (item.GetComponent<pickup_type>().TypeOfPickup)
     //     {
-    //         case PickUpEnum.Coin:
+    //         case PickUpType.Coin:
     //             //print("coin");
     //             AudioSource.PlayClipAtPoint(audioClips[0], item.GetComponent<Transform>().localPosition);
     //             plr_score += 100;
     //             foreground.GetComponent<Tilemap>().SetTile(plr_gridpos, null);
 
     //             return;
-    //         case PickUpEnum.CoinChest:
+    //         case PickUpType.CoinChest:
     //             //print("coin_chest");
     //             AudioSource.PlayClipAtPoint(audioClips[1], item.GetComponent<Transform>().localPosition);
     //             plr_score += 500;

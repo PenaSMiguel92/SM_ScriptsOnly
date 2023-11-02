@@ -8,7 +8,7 @@ public enum DoorState {Loading, Idle, Opening}
 public interface IDoor
 {
 
-    public bool TestDoor(List<PickUpEnum> _plrInventory);
+    public bool TestDoor(List<PickUpType> _plrInventory);
 }
 
 public class DoorHandle : MonoBehaviour, IStateChange<DoorType, DoorState>
@@ -117,7 +117,7 @@ public class DoorHandle : MonoBehaviour, IStateChange<DoorType, DoorState>
         GameObject[] coins = GameObject.FindGameObjectsWithTag("pickup");
         foreach (GameObject coin in coins)
         {
-            if ( coin.GetComponent<PickupHandle>().TypeOfPickup == PickUpEnum.Coin)
+            if ( coin.GetComponent<PickupHandle>().TypeOfPickup == PickUpType.Coin)
             {
                 coin_sum += 1;
             }
@@ -133,7 +133,7 @@ public class DoorHandle : MonoBehaviour, IStateChange<DoorType, DoorState>
         _audioManager.PlaySound(SoundType.DoorOpen, _curTransform.localPosition);
         StartCoroutine(PlayAnimation(false));
     }
-    public bool TestDoor(List<PickUpEnum> _plrInventory)
+    public bool TestDoor(List<PickUpType> _plrInventory)
     {
         if (_state == DoorState.Opening) return false;
         switch (_type)
@@ -150,25 +150,25 @@ public class DoorHandle : MonoBehaviour, IStateChange<DoorType, DoorState>
                 }
                 break;
             case DoorType.BlueDoor:
-                if (_plrInventory.Contains(PickUpEnum.BlueKey))
+                if (_plrInventory.Contains(PickUpType.BlueKey))
                 {
                     OpenDoor();
                 }
                 break;
             case DoorType.RedDoor:
-                if (_plrInventory.Contains(PickUpEnum.RedKey))
+                if (_plrInventory.Contains(PickUpType.RedKey))
                 {
                     OpenDoor();
                 }
                 break;
             case DoorType.GreenDoor:
-                if (_plrInventory.Contains(PickUpEnum.GreenKey))
+                if (_plrInventory.Contains(PickUpType.GreenKey))
                 {
                     OpenDoor();
                 }
                 break;
             case DoorType.YellowDoor:
-                if (_plrInventory.Contains(PickUpEnum.YellowKey))
+                if (_plrInventory.Contains(PickUpType.YellowKey))
                 {
                     OpenDoor();
                 }
