@@ -190,7 +190,7 @@ public class Player : MonoBehaviour, IPlayer
                     _proceed = tmp_spot_obj.GetComponent<IPushable>().TestPush(_moveDirection);
                     break;
                 case "door":
-                    _proceed = tmp_spot_obj.GetComponent<DoorHandle>().TestDoor(_plrInventory);
+                    _proceed = tmp_spot_obj.GetComponent<IDoor>().TestDoor(_plrInventory);
                     break;
                 case "switch":
                     _proceed = tmp_spot_obj.GetComponent<TrapSwitchHandle>().TestTrapSwitch(gameObject, _moveDirection);
@@ -339,7 +339,7 @@ public class Player : MonoBehaviour, IPlayer
                     _proceed = tmp_spot_obj.GetComponent<PushableHandle>().TestPush(_moveDirection);
                     break;
                 case "door":
-                    _proceed = tmp_spot_obj.GetComponent<DoorHandle>().TestDoor(_plrInventory);
+                    _proceed = tmp_spot_obj.GetComponent<IDoor>().TestDoor(_plrInventory);
                     break;
                 case "switch":
                     _proceed = tmp_spot_obj.GetComponent<TrapSwitchHandle>().TestTrapSwitch(gameObject, _moveDirection);
