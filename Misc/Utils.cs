@@ -5,6 +5,7 @@ public enum SoundType {BigExplosion, Boomerang, Chest, Pickup, Death, DoorOpen, 
 public enum EnemyType { Guard, Gatherer, Ninja, Mutant, Clone }
 public enum PickUpType { Coin, CoinChest, RedKey, BlueKey, YellowKey, GreenKey, Bomb, Torch, None }
 public enum TrapType { Hole, ElectricalBox, BudaStatue}
+public enum DoorType {CoinDoor, RedDoor, BlueDoor, GreenDoor, YellowDoor, Breakable}
 
 //States
 public enum PlayerState { Loading, Idle, Walking, Sliding, Death };
@@ -17,6 +18,8 @@ public enum EnemyState { Loading, Idle, Walk, Attack, Follow, Sliding, Death }
 public enum ExplosionState {Searching, Done}
 public enum GameState {Loading, Cutscene, Menu, Pause, LevelPlay, LevelEnd}
 public enum TrapState {Loading, Idle, Waiting, Crossing, Set, PlayerStand} 
+
+public enum DoorState {Loading, Idle, Opening}
 //Sections
 public enum FlameSection { Mid, End };
 

@@ -3,8 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public enum DoorType {CoinDoor, RedDoor, BlueDoor, GreenDoor, YellowDoor, Breakable}
-public enum DoorState {Loading, Idle, Opening}
+
 public interface IDoor
 {
 
@@ -117,7 +116,7 @@ public class DoorHandle : MonoBehaviour, IStateChange<DoorType, DoorState>
         GameObject[] coins = GameObject.FindGameObjectsWithTag("pickup");
         foreach (GameObject coin in coins)
         {
-            if ( coin.GetComponent<PickupHandle>().TypeOfPickup == PickUpType.Coin)
+            if ( coin.GetComponent<IPickup>().TypeOfPickup == PickUpType.Coin)
             {
                 coin_sum += 1;
             }
