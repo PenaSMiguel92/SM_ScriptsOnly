@@ -54,7 +54,7 @@ public class TrapSwitchHandle : MonoBehaviour, IStateChange<TrapType, TrapState>
     {
         bool _proceed = false;
         GameObject tmp_pushable;
-        PushableHandle tmp_pushableHandle;
+        IPushable tmp_pushableHandle;
 
         switch(_invokingObject.tag)
         {
@@ -65,7 +65,7 @@ public class TrapSwitchHandle : MonoBehaviour, IStateChange<TrapType, TrapState>
                 if (_state == TrapState.Crossing)
                 {
                     tmp_pushable = _mainControl.GetInstantiatedObject(_tileLoc,TilemapUse.Moveables);
-                    tmp_pushableHandle = tmp_pushable.GetComponent<PushableHandle>();
+                    tmp_pushableHandle = tmp_pushable.GetComponent<IPushable>();
                     _proceed = tmp_pushableHandle.TestPush(_moveDirection);
                     if (_proceed)
                     {
@@ -88,7 +88,7 @@ public class TrapSwitchHandle : MonoBehaviour, IStateChange<TrapType, TrapState>
                 _proceed = _state == TrapState.Set;
                 break;
             default:
-                tmp_pushableHandle = _invokingObject.GetComponent<PushableHandle>();
+                tmp_pushableHandle = _invokingObject.GetComponent<IPushable>();
                 if (_state != TrapState.Set && tmp_pushableHandle.Type != _type) return false; //if not set (state), thus not crossable, and not the same type, then prevent movement.
             
                 if (_state == TrapState.Set)
@@ -147,7 +147,7 @@ public class TrapSwitchHandle : MonoBehaviour, IStateChange<TrapType, TrapState>
                 _spriteRenderer.sprite = _sprites[_sprites.Length - 1];
                 break;
             case TrapState.Waiting:
-                PushableHandle tmp_handle = _pushable.GetComponent<PushableHandle>();
+                IPushable tmp_handle = _pushable.GetComponent<IPushable>();
                 if ((tmp_handle.GetPosition() - _curTransform.localPosition).magnitude <= 0.15)
                 {
                     tmp_handle.State = PushState.Set;

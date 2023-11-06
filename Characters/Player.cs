@@ -336,7 +336,7 @@ public class Player : MonoBehaviour, IPlayer
                     _proceed = true;
                     break;
                 case "push":
-                    _proceed = tmp_spot_obj.GetComponent<PushableHandle>().TestPush(_moveDirection);
+                    _proceed = tmp_spot_obj.GetComponent<IPushable>().TestPush(_moveDirection);
                     break;
                 case "door":
                     _proceed = tmp_spot_obj.GetComponent<IDoor>().TestDoor(_plrInventory);

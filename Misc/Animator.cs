@@ -65,10 +65,4 @@ public class Animator : MonoBehaviour
         curRenderer = gameObject.GetComponent<SpriteRenderer>();
         curTransform = gameObject.GetComponent<Transform>();
     }
-
-    // Update is called once per frame
-    void Update()
-    {
-        
-    }
 }

@@ -67,7 +67,7 @@ public class TrapHandle : MonoBehaviour, ITrapState, IStateChange<TrapType, Trap
         bool _move = false;
         bool _kill = false;
         GameObject tmp_pushable;
-        PushableHandle tmp_pushableHandle;
+        IPushable tmp_pushableHandle;
         Debug.Log(_state);
         switch(_state)
         {
@@ -77,7 +77,7 @@ public class TrapHandle : MonoBehaviour, ITrapState, IStateChange<TrapType, Trap
                 {       
                     case "player":
                         tmp_pushable = _mainControl.GetInstantiatedObject(_gridPos, TilemapUse.Moveables);
-                        tmp_pushableHandle = tmp_pushable.GetComponent<PushableHandle>();
+                        tmp_pushableHandle = tmp_pushable.GetComponent<IPushable>();
                         _move = tmp_pushableHandle.TestPush(_moveDirection);
                         Debug.Log(_move);
                         if (_move)
@@ -142,7 +142,7 @@ public class TrapHandle : MonoBehaviour, ITrapState, IStateChange<TrapType, Trap
                 }
                 break;
             case TrapState.Waiting:
-                PushableHandle tmp_handle = _pushable.GetComponent<PushableHandle>();
+                IPushable tmp_handle = _pushable.GetComponent<IPushable>();
                 if ((tmp_handle.GetPosition() - _currentTransform.localPosition).magnitude <= 0.15)
                 {
                     _state = TrapState.Crossing;
