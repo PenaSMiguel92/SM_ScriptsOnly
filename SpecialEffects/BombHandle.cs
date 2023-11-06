@@ -91,7 +91,7 @@ public class BombHandle : MonoBehaviour, IBomb
 
         tmp_newGridLocation = _mainControl.GetGridPosition(_transform.localPosition);
         GameObject tmp_explosion = SpawnExplosionAtLocation(tmp_newGridLocation, true);
-        tmp_explosion.GetComponent<ExplosionHandle>().onAnimationEnd += OnExplosionAnimationEnd;
+        tmp_explosion.GetComponent<Animator>().onAnimationEnd += OnExplosionAnimationEnd;
         _spriteRenderer.forceRenderingOff = true;
         _audioManager.PlaySound(SoundType.Explosion, _transform.localPosition);
         _state = BombState.Exploded;

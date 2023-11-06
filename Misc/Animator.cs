@@ -31,7 +31,7 @@ public class Animator : MonoBehaviour
     {
         bool end_anim = false;
         const int FRAME_RATE = FRAMERATE; //how many frames per animation frame.
-        int cur_frame = (curFrame>sprites.Length - 1) ? 0 : curFrame;
+        int cur_frame = (curFrame > sprites.Length - 1) ? sprites.Length - 1 : curFrame;
         int timer1 = 0;
         while (!end_anim)
         {
